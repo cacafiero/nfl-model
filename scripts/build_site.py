@@ -11,7 +11,9 @@ import sys
 import common
 from teams import TEAM_NAMES
 
-SITE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "site")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE_DIR = os.path.join(ROOT_DIR, "site")
+DOCS_DIR = os.path.join(ROOT_DIR, "docs")
 
 
 def main():
@@ -37,10 +39,18 @@ def main():
         template = f.read()
 
     out = template.replace("__SITE_DATA__", json.dumps(payload))
+
     out_path = os.path.join(SITE_DIR, "dist.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(out)
     print(f"Wrote {out_path} ({len(out)} bytes)")
+
+    # Also written for GitHub Pages (served from the /docs folder on `main`).
+    os.makedirs(DOCS_DIR, exist_ok=True)
+    pages_path = os.path.join(DOCS_DIR, "index.html")
+    with open(pages_path, "w", encoding="utf-8") as f:
+        f.write(out)
+    print(f"Wrote {pages_path} ({len(out)} bytes)")
 
 
 if __name__ == "__main__":
