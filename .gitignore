@@ -1,0 +1,14 @@
+# Original private workbook — not needed by the code, kept local only
+team stats*.xlsx
+~$*.xlsx
+
+# Generated data (re-fetched/recomputed on every run)
+data/*.csv
+data/*.json
+
+# Generated site output (rebuilt by build_site.py)
+site/dist.html
+
+# Python
+__pycache__/
+*.pyc

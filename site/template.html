@@ -1,0 +1,391 @@
+<title>Fourth & Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3f1e6;
+    --surface: #fffdf6;
+    --ink: #1b1f1a;
+    --ink-soft: #52584e;
+    --turf: #1f3d2c;
+    --turf-soft: #2e5339;
+    --gold: #b5822a;
+    --line: #ddd6c2;
+    --good: #2e6b3e;
+    --bad: #9a4a2e;
+    --shadow: 0 1px 0 rgba(27,31,26,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #12160f;
+      --surface: #191f16;
+      --ink: #ece6d6;
+      --ink-soft: #a7ab99;
+      --turf: #6fbe8c;
+      --turf-soft: #4c9868;
+      --gold: #e0ac52;
+      --line: #2c3327;
+      --good: #6fbe8c;
+      --bad: #d97e5a;
+      --shadow: 0 1px 0 rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #12160f;
+    --surface: #191f16;
+    --ink: #ece6d6;
+    --ink-soft: #a7ab99;
+    --turf: #6fbe8c;
+    --turf-soft: #4c9868;
+    --gold: #e0ac52;
+    --line: #2c3327;
+    --good: #6fbe8c;
+    --bad: #d97e5a;
+    --shadow: 0 1px 0 rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  .display {
+    font-family: "Anton", "Archivo", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-weight: 400;
+  }
+
+  header.masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    border-bottom: 3px solid var(--turf);
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+  }
+  header.masthead .brand {
+    font-size: clamp(28px, 5vw, 40px);
+    color: var(--turf);
+  }
+  header.masthead .brand span { color: var(--gold); }
+  header.masthead .tagline {
+    font-size: 13px;
+    color: var(--ink-soft);
+    max-width: 34ch;
+  }
+
+  .week-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .week-banner .pill {
+    background: var(--turf);
+    color: var(--paper);
+    font-family: "Anton", sans-serif;
+    letter-spacing: 0.04em;
+    font-size: 15px;
+    padding: 7px 16px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .week-banner .rule { flex: 1; height: 1px; background: var(--line); }
+  .week-banner .updated { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+
+  h2.section-title {
+    font-family: "Anton", sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 4px;
+  }
+  p.section-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 18px;
+  }
+  section { margin-bottom: 46px; }
+
+  /* --- Matchup cards --- */
+  .matchup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px 16px;
+    box-shadow: var(--shadow);
+  }
+  .card .meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .card .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+  }
+  .card .row .team {
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+  .card .row .team .abbr {
+    display: inline-block;
+    font-family: "Anton", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--turf-soft);
+    margin-right: 6px;
+  }
+  .card .row .score {
+    font-family: "Anton", sans-serif;
+    font-size: 21px;
+    min-width: 2.4ch;
+    text-align: right;
+  }
+  .card .row.winner .score { color: var(--turf); }
+  .card .bar-track {
+    height: 5px;
+    background: var(--line);
+    border-radius: 3px;
+    margin: 10px 0 8px;
+    overflow: hidden;
+    display: flex;
+  }
+  .card .bar-track .fill-away { background: var(--ink-soft); }
+  .card .bar-track .fill-home { background: var(--turf); }
+  .card .margin {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .card .margin b { color: var(--gold); font-weight: 600; }
+
+  /* --- Rankings table --- */
+  .table-scroll { overflow-x: auto; }
+  table.rankings {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    min-width: 640px;
+  }
+  table.rankings th, table.rankings td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.rankings th:first-child, table.rankings td:first-child,
+  table.rankings th:nth-child(2), table.rankings td:nth-child(2) {
+    text-align: left;
+  }
+  table.rankings thead th {
+    font-family: "Archivo", sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+  }
+  table.rankings thead th:hover { color: var(--turf); }
+  table.rankings thead th.sorted { color: var(--turf); }
+  table.rankings thead th .arrow { font-size: 9px; margin-left: 2px; }
+  table.rankings tbody tr:hover { background: color-mix(in srgb, var(--turf) 6%, transparent); }
+  table.rankings td.rank-cell { font-family: "Anton", sans-serif; font-size: 15px; }
+  table.rankings td.team-cell { font-weight: 600; }
+  .badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .badge.good { background: color-mix(in srgb, var(--good) 26%, transparent); color: var(--good); font-weight: 700; }
+  .badge.mid { background: color-mix(in srgb, var(--ink-soft) 14%, transparent); color: var(--ink-soft); }
+  .badge.bad { background: color-mix(in srgb, var(--bad) 24%, transparent); color: var(--bad); font-weight: 700; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  footer a { color: var(--turf-soft); }
+
+  @media (max-width: 480px) {
+    table.rankings th, table.rankings td { padding: 7px 6px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand display">Fourth <span>&amp;</span> Model</div>
+    <div class="tagline">A weekly-retrained scoring model for every NFL team, projected against next week's opponent.</div>
+  </header>
+
+  <div class="week-banner">
+    <div class="pill display" id="week-pill">WEEK —</div>
+    <div class="rule"></div>
+    <div class="updated" id="updated-note">updated —</div>
+  </div>
+
+  <section id="matchups-section">
+    <h2 class="section-title">This Week's Projections</h2>
+    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season.</p>
+    <div class="matchup-grid" id="matchup-grid"></div>
+  </section>
+
+  <section id="rankings-section">
+    <h2 class="section-title">Power Rankings</h2>
+    <p class="section-sub">Offense &amp; defense rank, 1&ndash;32, from each team's points-per-drive this season. Click a column to sort.</p>
+    <div class="table-scroll">
+      <table class="rankings" id="rankings-table">
+        <thead>
+          <tr>
+            <th data-key="rank_label">#</th>
+            <th data-key="team_name">Team</th>
+            <th data-key="off_rank">Off</th>
+            <th data-key="def_rank">Def</th>
+            <th data-key="combined">Combined</th>
+            <th data-key="off_score_pct">Scoring Drive %</th>
+            <th data-key="def_score_pct_allowed">Allowed %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Model retrained weekly from <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> play-by-play and box score data. Projections are a statistical estimate, not betting advice.
+  </footer>
+</div>
+
+<script>
+const SITE_DATA = __SITE_DATA__;
+
+function fmtScore(n) {
+  return n === null || n === undefined ? "—" : n.toFixed(1);
+}
+
+function rankBadge(rank) {
+  const cls = rank <= 10 ? "good" : rank <= 22 ? "mid" : "bad";
+  return `<span class="badge ${cls}">${rank}</span>`;
+}
+
+function renderMatchups() {
+  const grid = document.getElementById("matchup-grid");
+  const games = SITE_DATA.games;
+  if (!games.length) {
+    grid.innerHTML = '<p class="section-sub">No games projected right now — check back once the next slate is set.</p>';
+    return;
+  }
+  const week = games[0].week;
+  document.getElementById("week-pill").textContent = `Week ${week}`;
+
+  grid.innerHTML = games.filter(g => g.week === week).map(g => {
+    const home = SITE_DATA.teams[g.home_team] || {};
+    const away = SITE_DATA.teams[g.away_team] || {};
+    const hs = g.home_projected, as = g.away_projected;
+    const total = (hs || 0) + (as || 0) || 1;
+    const homePct = Math.round(((hs || 0) / total) * 100);
+    const homeWins = (hs || 0) >= (as || 0);
+    const margin = Math.abs((hs || 0) - (as || 0)).toFixed(1);
+    const leader = homeWins ? (home.name || g.home_team) : (away.name || g.away_team);
+    return `
+      <div class="card">
+        <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
+        <div class="row${!homeWins ? " winner" : ""}">
+          <div class="team"><span class="abbr">${g.away_team}</span>${away.name || g.away_team}</div>
+          <div class="score">${fmtScore(as)}</div>
+        </div>
+        <div class="row${homeWins ? " winner" : ""}">
+          <div class="team"><span class="abbr">${g.home_team}</span>${home.name || g.home_team}</div>
+          <div class="score">${fmtScore(hs)}</div>
+        </div>
+        <div class="bar-track">
+          <div class="fill-away" style="width:${100 - homePct}%"></div>
+          <div class="fill-home" style="width:${homePct}%"></div>
+        </div>
+        <div class="margin">Projected: <b>${leader}</b> by ${margin}</div>
+      </div>`;
+  }).join("");
+}
+
+let sortKey = "combined";
+let sortAsc = true;
+
+function rankingRows() {
+  return Object.entries(SITE_DATA.teams).map(([abbr, t]) => ({
+    abbr,
+    team_name: t.name || abbr,
+    off_rank: t.off_rank,
+    def_rank: t.def_rank,
+    combined: (t.off_rank || 99) + (t.def_rank || 99),
+    off_score_pct: t.off_score_pct,
+    def_score_pct_allowed: t.def_score_pct_allowed,
+  }));
+}
+
+function renderRankings() {
+  const rows = rankingRows();
+  rows.sort((a, b) => {
+    const va = a[sortKey], vb = b[sortKey];
+    return sortAsc ? va - vb : vb - va;
+  });
+  const tbody = document.querySelector("#rankings-table tbody");
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="team-cell">${r.team_name}</td>
+      <td>${rankBadge(r.off_rank)}</td>
+      <td>${rankBadge(r.def_rank)}</td>
+      <td>${r.combined}</td>
+      <td>${r.off_score_pct.toFixed(1)}%</td>
+      <td>${r.def_score_pct_allowed.toFixed(1)}%</td>
+    </tr>`).join("");
+
+  document.querySelectorAll("#rankings-table thead th").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.key === sortKey);
+  });
+}
+
+document.querySelectorAll("#rankings-table thead th").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (key === sortKey) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
+    renderRankings();
+  });
+});
+
+document.getElementById("updated-note").textContent = `updated ${SITE_DATA.updated}`;
+renderMatchups();
+renderRankings();
+</script>
