@@ -181,6 +181,31 @@
   }
   .card .margin b { color: var(--gold); font-weight: 600; }
 
+  .card .odds {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .card .odds .line {
+    display: flex;
+    justify-content: space-between;
+    color: var(--ink-soft);
+  }
+  .card .odds .line .val { color: var(--ink); font-weight: 600; }
+  .card .odds .pick {
+    display: flex;
+    justify-content: space-between;
+  }
+  .card .odds .pick .val {
+    font-weight: 700;
+  }
+  .card .odds .pick .val.agree { color: var(--ink-soft); font-weight: 600; }
+  .card .odds .pick .val.fade { color: var(--gold); }
+
   /* --- Rankings table --- */
   .table-scroll { overflow-x: auto; }
   table.rankings {
@@ -258,7 +283,7 @@
 
   <section id="matchups-section">
     <h2 class="section-title">This Week's Projections</h2>
-    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season.</p>
+    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
   </section>
 
@@ -319,6 +344,20 @@ function renderMatchups() {
     const homeWins = (hs || 0) >= (as || 0);
     const margin = Math.abs((hs || 0) - (as || 0)).toFixed(1);
     const leader = homeWins ? (home.name || g.home_team) : (away.name || g.away_team);
+
+    let oddsHtml = "";
+    if (g.spread_line !== null && g.spread_line !== undefined) {
+      const favTeam = g.spread_line > 0 ? g.home_team : g.away_team;
+      const favAmt = Math.abs(g.spread_line).toFixed(1);
+      const spreadPickAgrees = g.pick_spread === favTeam;
+      const totalPickLabel = g.pick_total === "OVER" ? `OVER ${fmtScore(g.total_line)}` : `UNDER ${fmtScore(g.total_line)}`;
+      oddsHtml = `
+        <div class="odds">
+          <div class="line"><span>Line</span><span class="val">${favTeam} -${favAmt} &middot; O/U ${fmtScore(g.total_line)}</span></div>
+          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>
+        </div>`;
+    }
+
     return `
       <div class="card">
         <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
@@ -335,6 +374,7 @@ function renderMatchups() {
           <div class="fill-home" style="width:${homePct}%"></div>
         </div>
         <div class="margin">Projected: <b>${leader}</b> by ${margin}</div>
+        ${oddsHtml}
       </div>`;
   }).join("");
 }

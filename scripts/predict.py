@@ -143,14 +143,36 @@ def main():
             x = np.concatenate([[1.0], opp_allowed])
             return float(beta @ x)
 
+        home_pts = project(home, away)
+        away_pts = project(away, home)
+        spread_line = game.get("spread_line")  # home-favored margin per the market (positive = home favored)
+        total_line = game.get("total_line")
+
+        pick_spread = pick_total = model_margin = model_total = None
+        if home_pts is not None and away_pts is not None:
+            model_margin = home_pts - away_pts
+            model_total = home_pts + away_pts
+            if spread_line is not None:
+                pick_spread = home if model_margin > spread_line else away
+            if total_line is not None:
+                pick_total = "OVER" if model_total > total_line else "UNDER"
+
         predictions.append({
             "game_id": game["game_id"],
             "week": game["week"],
             "gameday": game.get("gameday"),
             "home_team": home,
             "away_team": away,
-            "home_projected": project(home, away),
-            "away_projected": project(away, home),
+            "home_projected": home_pts,
+            "away_projected": away_pts,
+            "spread_line": spread_line,
+            "total_line": total_line,
+            "home_moneyline": game.get("home_moneyline"),
+            "away_moneyline": game.get("away_moneyline"),
+            "model_margin": model_margin,
+            "model_total": model_total,
+            "pick_spread": pick_spread,
+            "pick_total": pick_total,
         })
 
     predictions.sort(key=lambda p: (p["week"], p["gameday"] or ""))
