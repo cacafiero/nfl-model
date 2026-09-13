@@ -2,15 +2,16 @@
 
 For each team, fits a linear regression of points scored on that game's box
 score inputs (pass attempts, pass yards, rush attempts, rush yards,
-turnovers), then evaluates it against the upcoming opponent's season-to-date
-average allowed inputs to project a score. Mirrors the workbook's per-team
+turnovers), then evaluates it against the upcoming opponent's average
+allowed inputs to project a score. Mirrors the workbook's per-team
 regression + opponent-strength projection, without the tier-bucketing
 specifics (see plan notes: this is a clean re-implementation, not a
 cell-for-cell port).
 
-Early in a season a team may not yet have enough games to fit a stable
-5-variable regression, so this falls back to the most recently completed
-season's full game log until the current season has at least MIN_GAMES.
+Both a team's own scoring regression and its opponents' allowed-stats
+average are computed from a rolling window of the WINDOW most recent
+regular-season games, pulling from the prior season to fill the window
+early in a new season (playoffs are excluded entirely).
 
 Usage: python predict.py [season]
 """
@@ -23,7 +24,7 @@ import numpy as np
 import polars as pl
 
 FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
-MIN_GAMES = 4
+WINDOW = 6  # most recent regular-season games to train/average on
 RIDGE_ALPHA = 1.0  # small L2 penalty for numerical stability, intercept excluded
 
 
@@ -32,6 +33,7 @@ def load_team_games(season: int) -> pl.DataFrame:
     if not os.path.exists(path):
         return pl.DataFrame()
     df = pl.read_csv(path)
+    df = df.filter(pl.col("season_type") == "REG")
     df = df.with_columns(
         (pl.col("passing_interceptions").fill_null(0) + pl.col("fumbles_lost_total").fill_null(0))
         .alias("turnovers")
@@ -43,7 +45,7 @@ def load_schedule(season: int) -> pl.DataFrame:
     path = os.path.join(common.DATA_DIR, f"schedule_{season}.csv")
     if not os.path.exists(path):
         return pl.DataFrame()
-    return pl.read_csv(path)
+    return pl.read_csv(path).filter(pl.col("game_type") == "REG")
 
 
 def points_for(schedule: pl.DataFrame, season: int, week: int, team: str):
@@ -66,11 +68,34 @@ def fit_ridge(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     return beta
 
 
-def team_training_rows(games: pl.DataFrame, schedule: pl.DataFrame, team: str, season: int):
-    rows = games.filter(pl.col("team") == team)
+def multiple_r(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
+    """Correlation between the model's fitted values and actual points scored
+    (Excel/LINEST-style "Multiple R" for the fitted regression)."""
+    if len(y) < 2 or np.std(y) == 0:
+        return None
+    Xa = np.hstack([np.ones((X.shape[0], 1)), X])
+    y_hat = Xa @ beta
+    if np.std(y_hat) == 0:
+        return None
+    return float(np.corrcoef(y, y_hat)[0, 1])
+
+
+def recent_rows(pool: pl.DataFrame, team_col: str, team: str, window: int = WINDOW) -> pl.DataFrame:
+    """The `window` most recent regular-season rows for `team`, newest first,
+    drawn from the combined current+prior season pool."""
+    if pool.height == 0:
+        return pool
+    return pool.filter(pl.col(team_col) == team).sort(["season", "week"], descending=True).head(window)
+
+
+def team_training_rows(pool: pl.DataFrame, schedules: dict, team: str):
+    rows = recent_rows(pool, "team", team)
     X, y = [], []
     for r in rows.to_dicts():
-        pts = points_for(schedule, season, r["week"], team)
+        schedule = schedules.get(r["season"])
+        if schedule is None:
+            continue
+        pts = points_for(schedule, r["season"], r["week"], team)
         if pts is None:
             continue
         X.append([r[f] for f in FEATURES])
@@ -78,8 +103,8 @@ def team_training_rows(games: pl.DataFrame, schedule: pl.DataFrame, team: str, s
     return np.array(X, dtype=float), np.array(y, dtype=float)
 
 
-def allowed_stats_avg(games: pl.DataFrame, opponent: str):
-    rows = games.filter(pl.col("opponent_team") == opponent)
+def allowed_stats_avg(pool: pl.DataFrame, opponent: str):
+    rows = recent_rows(pool, "opponent_team", opponent)
     if rows.height == 0:
         return None
     return np.array([rows[f].mean() for f in FEATURES], dtype=float)
@@ -104,26 +129,26 @@ def main():
     prev_games = load_team_games(prev_season)
     prev_schedule = load_schedule(prev_season)
 
+    schedules = {season: cur_schedule, prev_season: prev_schedule}
+    pool_frames = [g for g in (cur_games, prev_games) if g.height]
+    pool = pl.concat(pool_frames, how="diagonal_relaxed") if pool_frames else cur_games
+
     teams = sorted(set(cur_schedule["home_team"].to_list()) | set(cur_schedule["away_team"].to_list()))
 
     models = {}
     allowed = {}
     for team in teams:
-        cur_played = cur_games.filter(pl.col("team") == team).height
-        if cur_played >= MIN_GAMES:
-            X, y = team_training_rows(cur_games, cur_schedule, team, season)
-            src_games, src_schedule = cur_games, cur_schedule
-        else:
-            X, y = team_training_rows(prev_games, prev_schedule, team, prev_season)
-            src_games, src_schedule = prev_games, prev_schedule
+        X, y = team_training_rows(pool, schedules, team)
 
         if X.shape[0] >= 2:
             beta = fit_ridge(X, y)
+            r = multiple_r(X, y, beta)
         else:
             beta = None  # not enough history anywhere; handled at prediction time
+            r = None
 
-        models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None}
-        allowed[team] = allowed_stats_avg(src_games, team)
+        models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None, "multiple_r": r}
+        allowed[team] = allowed_stats_avg(pool, team)
 
     predictions = []
     seen_games = set()
@@ -165,6 +190,8 @@ def main():
             "away_team": away,
             "home_projected": home_pts,
             "away_projected": away_pts,
+            "home_multiple_r": models.get(home, {}).get("multiple_r"),
+            "away_multiple_r": models.get(away, {}).get("multiple_r"),
             "spread_line": spread_line,
             "total_line": total_line,
             "home_moneyline": game.get("home_moneyline"),

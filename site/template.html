@@ -141,10 +141,15 @@
   }
   .card .row {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     align-items: baseline;
     gap: 8px;
     padding: 3px 0;
+  }
+  .card .row .r-val {
+    font-size: 11px;
+    color: var(--ink-soft);
+    white-space: nowrap;
   }
   .card .row .team {
     font-size: 14.5px;
@@ -320,6 +325,10 @@ function fmtScore(n) {
   return n === null || n === undefined ? "—" : n.toFixed(1);
 }
 
+function fmtR(n) {
+  return n === null || n === undefined ? "R —" : `R ${n.toFixed(2)}`;
+}
+
 function rankBadge(rank) {
   const cls = rank <= 10 ? "good" : rank <= 22 ? "mid" : "bad";
   return `<span class="badge ${cls}">${rank}</span>`;
@@ -363,10 +372,12 @@ function renderMatchups() {
         <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
         <div class="row${!homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.away_team}</span>${away.name || g.away_team}</div>
+          <div class="r-val">${fmtR(g.away_multiple_r)}</div>
           <div class="score">${fmtScore(as)}</div>
         </div>
         <div class="row${homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.home_team}</span>${home.name || g.home_team}</div>
+          <div class="r-val">${fmtR(g.home_multiple_r)}</div>
           <div class="score">${fmtScore(hs)}</div>
         </div>
         <div class="bar-track">
