@@ -8,10 +8,20 @@ regression + opponent-strength projection, without the tier-bucketing
 specifics (see plan notes: this is a clean re-implementation, not a
 cell-for-cell port).
 
-Both a team's own scoring regression and its opponents' allowed-stats
-average are computed from a rolling window of the WINDOW most recent
-regular-season games, pulling from the prior season to fill the window
-early in a new season (playoffs are excluded entirely).
+A team's own scoring regression is fit on its full available history (up
+to two regular seasons, pulling from the prior season early in a new
+one) rather than just the last few games: 5 features plus an intercept
+need enough observations to fit stably, and a short window leaves the
+regression underdetermined (near-perfect but meaningless fit, wild
+coefficients that blow up when evaluated against a different opponent).
+
+An opponent's allowed-stats average (the input evaluated against a team's
+fitted regression) is a different, deliberately short WINDOW: a WEIGHTED
+average of the opponent's last WINDOW games, weighting each by how good
+that opponent's defense ranked *as of that week* (a point-in-time rank
+computed from cumulative drive data through that week, not today's
+season-to-date rank), so a game from a stretch where they were playing
+elite defense counts more than one from a stretch where they weren't.
 
 Usage: python predict.py [season]
 """
@@ -22,9 +32,11 @@ import sys
 import common
 import numpy as np
 import polars as pl
+import rankings
 
 FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
-WINDOW = 6  # most recent regular-season games to train/average on
+WINDOW = 6  # recent games used for the opponent's rank-weighted allowed-stats average
+TRAIN_WINDOW = 64  # effectively "all available history" (a pool tops out around 2 seasons)
 RIDGE_ALPHA = 1.0  # small L2 penalty for numerical stability, intercept excluded
 
 
@@ -89,7 +101,7 @@ def recent_rows(pool: pl.DataFrame, team_col: str, team: str, window: int = WIND
 
 
 def team_training_rows(pool: pl.DataFrame, schedules: dict, team: str):
-    rows = recent_rows(pool, "team", team)
+    rows = recent_rows(pool, "team", team, window=TRAIN_WINDOW)
     X, y = [], []
     for r in rows.to_dicts():
         schedule = schedules.get(r["season"])
@@ -103,11 +115,45 @@ def team_training_rows(pool: pl.DataFrame, schedules: dict, team: str):
     return np.array(X, dtype=float), np.array(y, dtype=float)
 
 
-def allowed_stats_avg(pool: pl.DataFrame, opponent: str):
+def weekly_defense_ranks(season: int, schedule: pl.DataFrame) -> dict:
+    """{week: {team: def_rank}}, where def_rank for week w is computed from
+    cumulative REG-season drives through week w only (point-in-time), not
+    the full-season number. def_rank 1 = fewest points allowed per drive."""
+    path = os.path.join(common.DATA_DIR, f"drives_{season}.csv")
+    if not os.path.exists(path) or schedule.height == 0:
+        return {}
+    drives = pl.read_csv(path)
+    if drives.height == 0:
+        return {}
+    reg_game_ids = set(schedule["game_id"].to_list())
+    drives = drives.filter(pl.col("game_id").is_in(reg_game_ids))
+    if drives.height == 0:
+        return {}
+    out = {}
+    for w in sorted(drives["week"].unique().to_list()):
+        defense = rankings.build_side(drives.filter(pl.col("week") <= w), "defteam")
+        if defense.height == 0:
+            continue
+        defense = defense.sort("score_pct", descending=False).with_row_index("def_rank", offset=1)
+        out[w] = {r["team"]: r["def_rank"] for r in defense.to_dicts()}
+    return out
+
+
+def allowed_stats_avg(pool: pl.DataFrame, opponent: str, week_ranks: dict):
+    """Weighted average of `opponent`'s last WINDOW allowed-stat games,
+    weighting each game by the opponent's own point-in-time defensive rank
+    for that week (falling back to a neutral mid-pack rank when unknown)."""
     rows = recent_rows(pool, "opponent_team", opponent)
     if rows.height == 0:
         return None
-    return np.array([rows[f].mean() for f in FEATURES], dtype=float)
+    weights = np.array([
+        float(week_ranks.get(r["season"], {}).get(r["week"], {}).get(opponent, 16.5))
+        for r in rows.to_dicts()
+    ], dtype=float)
+    return np.array(
+        [float(np.sum(np.array(rows[f].to_list(), dtype=float) * weights) / weights.sum()) for f in FEATURES],
+        dtype=float,
+    )
 
 
 def next_unplayed_game(schedule: pl.DataFrame, team: str):
@@ -133,6 +179,11 @@ def main():
     pool_frames = [g for g in (cur_games, prev_games) if g.height]
     pool = pl.concat(pool_frames, how="diagonal_relaxed") if pool_frames else cur_games
 
+    week_ranks = {
+        season: weekly_defense_ranks(season, cur_schedule),
+        prev_season: weekly_defense_ranks(prev_season, prev_schedule),
+    }
+
     teams = sorted(set(cur_schedule["home_team"].to_list()) | set(cur_schedule["away_team"].to_list()))
 
     models = {}
@@ -148,7 +199,7 @@ def main():
             r = None
 
         models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None, "multiple_r": r}
-        allowed[team] = allowed_stats_avg(pool, team)
+        allowed[team] = allowed_stats_avg(pool, team, week_ranks)
 
     predictions = []
     seen_games = set()
