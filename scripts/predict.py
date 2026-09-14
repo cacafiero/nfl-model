@@ -36,7 +36,7 @@ import rankings
 
 FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
 WINDOW = 6  # recent games used for the opponent's rank-weighted allowed-stats average
-TRAIN_WINDOW = 64  # effectively "all available history" (a pool tops out around 2 seasons)
+TRAIN_WINDOW = 17  # cap at one full regular season's worth of games
 RIDGE_ALPHA = 1.0  # small L2 penalty for numerical stability, intercept excluded
 
 
