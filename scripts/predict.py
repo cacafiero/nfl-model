@@ -142,12 +142,14 @@ def weekly_defense_ranks(season: int, schedule: pl.DataFrame) -> dict:
 def allowed_stats_avg(pool: pl.DataFrame, opponent: str, week_ranks: dict):
     """Weighted average of `opponent`'s last WINDOW allowed-stat games,
     weighting each game by the opponent's own point-in-time defensive rank
-    for that week (falling back to a neutral mid-pack rank when unknown)."""
+    for that week (falling back to a neutral mid-pack rank when unknown).
+    def_rank 1 = best defense, so the weight inverts it (33 - rank) to give
+    the strongest defensive weeks the most weight."""
     rows = recent_rows(pool, "opponent_team", opponent)
     if rows.height == 0:
         return None
     weights = np.array([
-        float(week_ranks.get(r["season"], {}).get(r["week"], {}).get(opponent, 16.5))
+        33.0 - float(week_ranks.get(r["season"], {}).get(r["week"], {}).get(opponent, 16.5))
         for r in rows.to_dicts()
     ], dtype=float)
     return np.array(
