@@ -37,7 +37,10 @@ import rankings
 FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
 WINDOW = 6  # recent games used for the opponent's rank-weighted allowed-stats average
 TRAIN_WINDOW = 17  # cap at one full regular season's worth of games
-RIDGE_ALPHA = 1.0  # small L2 penalty for numerical stability, intercept excluded
+RIDGE_ALPHA = 25.0  # L2 penalty; shrinks per-team coefficients so a small, noisy
+# training window can't produce swings like -6 points per turnover that blow up
+# when evaluated against a different opponent's stat profile
+WINSORIZE_K = 2.0  # cap allowed-stats outliers beyond median +/- K * MAD
 
 
 def load_team_games(season: int) -> pl.DataFrame:
@@ -139,12 +142,23 @@ def weekly_defense_ranks(season: int, schedule: pl.DataFrame) -> dict:
     return out
 
 
+def winsorize(values: np.ndarray, k: float = WINSORIZE_K) -> np.ndarray:
+    """Cap values beyond median +/- k*MAD so a single outlier game (e.g. one
+    freak 6-turnover performance) can't dominate a small-window average."""
+    median = np.median(values)
+    mad = np.median(np.abs(values - median))
+    if mad == 0:
+        return values
+    return np.clip(values, median - k * mad, median + k * mad)
+
+
 def allowed_stats_avg(pool: pl.DataFrame, opponent: str, week_ranks: dict):
     """Weighted average of `opponent`'s last WINDOW allowed-stat games,
     weighting each game by the opponent's own point-in-time defensive rank
     for that week (falling back to a neutral mid-pack rank when unknown).
     def_rank 1 = best defense, so the weight inverts it (33 - rank) to give
-    the strongest defensive weeks the most weight."""
+    the strongest defensive weeks the most weight. Each feature is
+    winsorized first so one outlier game can't dominate the average."""
     rows = recent_rows(pool, "opponent_team", opponent)
     if rows.height == 0:
         return None
@@ -153,7 +167,7 @@ def allowed_stats_avg(pool: pl.DataFrame, opponent: str, week_ranks: dict):
         for r in rows.to_dicts()
     ], dtype=float)
     return np.array(
-        [float(np.sum(np.array(rows[f].to_list(), dtype=float) * weights) / weights.sum()) for f in FEATURES],
+        [float(np.sum(winsorize(np.array(rows[f].to_list(), dtype=float)) * weights) / weights.sum()) for f in FEATURES],
         dtype=float,
     )
 
