@@ -83,16 +83,16 @@ def fit_ridge(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     return beta
 
 
-def multiple_r(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
-    """Correlation between the model's fitted values and actual points scored
-    (Excel/LINEST-style "Multiple R" for the fitted regression)."""
+def r_squared(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
+    """Fraction of variance in points scored explained by the fitted model
+    (the correlation between fitted and actual values, squared)."""
     if len(y) < 2 or np.std(y) == 0:
         return None
     Xa = np.hstack([np.ones((X.shape[0], 1)), X])
     y_hat = Xa @ beta
     if np.std(y_hat) == 0:
         return None
-    return float(np.corrcoef(y, y_hat)[0, 1])
+    return float(np.corrcoef(y, y_hat)[0, 1] ** 2)
 
 
 def recent_rows(pool: pl.DataFrame, team_col: str, team: str, window: int = WINDOW) -> pl.DataFrame:
@@ -209,12 +209,12 @@ def main():
 
         if X.shape[0] >= 2:
             beta = fit_ridge(X, y)
-            r = multiple_r(X, y, beta)
+            r2 = r_squared(X, y, beta)
         else:
             beta = None  # not enough history anywhere; handled at prediction time
-            r = None
+            r2 = None
 
-        models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None, "multiple_r": r}
+        models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None, "r_squared": r2}
         allowed[team] = allowed_stats_avg(pool, team, week_ranks)
 
     predictions = []
@@ -257,8 +257,8 @@ def main():
             "away_team": away,
             "home_projected": home_pts,
             "away_projected": away_pts,
-            "home_multiple_r": models.get(home, {}).get("multiple_r"),
-            "away_multiple_r": models.get(away, {}).get("multiple_r"),
+            "home_r_squared": models.get(home, {}).get("r_squared"),
+            "away_r_squared": models.get(away, {}).get("r_squared"),
             "spread_line": spread_line,
             "total_line": total_line,
             "home_moneyline": game.get("home_moneyline"),

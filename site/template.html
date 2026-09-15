@@ -325,8 +325,8 @@ function fmtScore(n) {
   return n === null || n === undefined ? "—" : n.toFixed(1);
 }
 
-function fmtR(n) {
-  return n === null || n === undefined ? "R —" : `R ${n.toFixed(2)}`;
+function fmtR2(n) {
+  return n === null || n === undefined ? "R² —" : `R² ${n.toFixed(2)}`;
 }
 
 function rankBadge(rank) {
@@ -372,12 +372,12 @@ function renderMatchups() {
         <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
         <div class="row${!homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.away_team}</span>${away.name || g.away_team}</div>
-          <div class="r-val">${fmtR(g.away_multiple_r)}</div>
+          <div class="r-val">${fmtR2(g.away_r_squared)}</div>
           <div class="score">${fmtScore(as)}</div>
         </div>
         <div class="row${homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.home_team}</span>${home.name || g.home_team}</div>
-          <div class="r-val">${fmtR(g.home_multiple_r)}</div>
+          <div class="r-val">${fmtR2(g.home_r_squared)}</div>
           <div class="score">${fmtScore(hs)}</div>
         </div>
         <div class="bar-track">
