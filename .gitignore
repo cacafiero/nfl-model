@@ -12,3 +12,6 @@ site/dist.html
 # Python
 __pycache__/
 *.pyc
+
+# Local Claude Code app/session config, not part of the project
+.claude/

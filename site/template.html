@@ -211,6 +211,27 @@
   .card .odds .pick .val.agree { color: var(--ink-soft); font-weight: 600; }
   .card .odds .pick .val.fade { color: var(--gold); }
 
+  .card .injuries {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .card .injuries .inj-row { margin-top: 3px; }
+  .card .injuries .inj-row:first-child { margin-top: 0; }
+  .card .injuries b { color: var(--ink); }
+  .card .injuries .status {
+    display: inline-block;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 10.5px;
+  }
+  .card .injuries .status.Out { background: color-mix(in srgb, var(--bad) 24%, transparent); color: var(--bad); }
+  .card .injuries .status.Doubtful { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+  .card .injuries .status.Questionable { background: color-mix(in srgb, var(--ink-soft) 14%, transparent); color: var(--ink-soft); }
+
   /* --- Rankings table --- */
   .table-scroll { overflow-x: auto; }
   table.rankings {
@@ -367,6 +388,15 @@ function renderMatchups() {
         </div>`;
     }
 
+    const injuryRow = (abbr) => {
+      const list = (SITE_DATA.injuries || {})[abbr];
+      if (!list || !list.length) return "";
+      const names = list.map(p => `${p.name} (${p.position}) <span class="status ${p.status}">${p.status[0]}</span>`).join(", ");
+      return `<div class="inj-row"><b>${abbr}</b>: ${names}</div>`;
+    };
+    const injuriesInner = injuryRow(g.away_team) + injuryRow(g.home_team);
+    const injuriesHtml = injuriesInner ? `<div class="injuries">${injuriesInner}</div>` : "";
+
     return `
       <div class="card">
         <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
@@ -386,6 +416,7 @@ function renderMatchups() {
         </div>
         <div class="margin">Projected: <b>${leader}</b> by ${margin}</div>
         ${oddsHtml}
+        ${injuriesHtml}
       </div>`;
   }).join("");
 }

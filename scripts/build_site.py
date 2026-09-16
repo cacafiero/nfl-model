@@ -9,11 +9,37 @@ import os
 import sys
 
 import common
+import polars as pl
 from teams import TEAM_NAMES
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE_DIR = os.path.join(ROOT_DIR, "site")
 DOCS_DIR = os.path.join(ROOT_DIR, "docs")
+
+# Informational only -- see predict.py's module docstring for why injuries
+# aren't folded into the score model itself. Practice-report rows with no
+# final designation yet (report_status null) aren't shown; the official
+# report isn't final until Friday, same timing as the betting lines.
+NOTABLE_STATUSES = {"Out", "Doubtful", "Questionable"}
+
+
+def load_injuries(season: int, week: int) -> dict:
+    """{team: [{"name", "position", "status"}, ...]} for the given week,
+    final designations only."""
+    path = os.path.join(common.DATA_DIR, f"injuries_{season}.csv")
+    if not os.path.exists(path):
+        return {}
+    inj = pl.read_csv(path).filter(
+        (pl.col("week") == week) & pl.col("report_status").is_in(list(NOTABLE_STATUSES))
+    )
+    out: dict = {}
+    for r in inj.to_dicts():
+        out.setdefault(r["team"], []).append({
+            "name": r["full_name"],
+            "position": r["position"],
+            "status": r["report_status"],
+        })
+    return out
 
 
 def main():
@@ -28,11 +54,15 @@ def main():
     for abbr, r in rankings["teams"].items():
         teams[abbr] = {"name": TEAM_NAMES.get(abbr, abbr), **r}
 
+    display_week = predictions["games"][0]["week"] if predictions["games"] else None
+    injuries = load_injuries(season, display_week) if display_week else {}
+
     payload = {
         "season": season,
         "updated": datetime.date.today().isoformat(),
         "teams": teams,
         "games": predictions["games"],
+        "injuries": injuries,
     }
 
     with open(os.path.join(SITE_DIR, "template.html"), encoding="utf-8") as f:

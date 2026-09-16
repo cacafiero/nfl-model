@@ -48,11 +48,21 @@ def fetch_one(season: int):
           f"team_stat_rows={team_stats.height} drive_rows={drives.height}")
 
 
+def fetch_injuries(season: int):
+    # Only needed for the current season -- informational display on the
+    # site, not a model input (see predict.py's module docstring for why).
+    print(f"Fetching injury reports for {season}...")
+    injuries = nfl.load_injuries(seasons=[season])
+    injuries.write_csv(os.path.join(common.DATA_DIR, f"injuries_{season}.csv"))
+    print(f"Done. injury_rows={injuries.height}")
+
+
 def main():
     season = int(sys.argv[1]) if len(sys.argv) > 1 else common.current_season()
     os.makedirs(common.DATA_DIR, exist_ok=True)
     fetch_one(season)
     fetch_one(season - 1)
+    fetch_injuries(season)
 
 
 if __name__ == "__main__":
