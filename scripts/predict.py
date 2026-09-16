@@ -2,15 +2,25 @@
 
 For each team, fits a linear regression of points scored on that game's box
 score inputs (pass attempts, pass yards, rush attempts, rush yards,
-turnovers), then evaluates it against the upcoming opponent's average
-allowed inputs to project a score. Mirrors the workbook's per-team
-regression + opponent-strength projection, without the tier-bucketing
-specifics (see plan notes: this is a clean re-implementation, not a
-cell-for-cell port).
+turnovers) plus two game-context features (home/away, outdoors/dome), then
+evaluates it against the upcoming opponent's average allowed inputs and the
+upcoming game's actual home/away + roof to project a score. Mirrors the
+workbook's per-team regression + opponent-strength projection, without the
+tier-bucketing specifics (see plan notes: this is a clean re-implementation,
+not a cell-for-cell port).
+
+The box-score inputs (STAT_FEATURES) are averaged from the opponent's recent
+allowed stats, since we don't know the exact game in advance. The context
+inputs (CONTEXT_FEATURES: is_home, is_outdoor) are *not* averaged — they're
+known exactly for the upcoming game, so training rows carry each team's own
+past is_home/is_outdoor and prediction plugs in the real value for this game.
+Live weather (temperature/wind) isn't available this far ahead of kickoff in
+the underlying data, so only the always-known roof type is used as a coarse
+weather-risk proxy.
 
 A team's own scoring regression is fit on its full available history (up
 to two regular seasons, pulling from the prior season early in a new
-one) rather than just the last few games: 5 features plus an intercept
+one) rather than just the last few games: 7 features plus an intercept
 need enough observations to fit stably, and a short window leaves the
 regression underdetermined (near-perfect but meaningless fit, wild
 coefficients that blow up when evaluated against a different opponent).
@@ -34,7 +44,9 @@ import numpy as np
 import polars as pl
 import rankings
 
-FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
+STAT_FEATURES = ["attempts", "passing_yards", "carries", "rushing_yards", "turnovers"]
+CONTEXT_FEATURES = ["is_home", "is_outdoor"]  # known exactly for the upcoming game, never averaged
+FEATURES = STAT_FEATURES + CONTEXT_FEATURES
 WINDOW = 6  # recent games used for the opponent's rank-weighted allowed-stats average
 TRAIN_WINDOW = 17  # cap at one full regular season's worth of games
 RIDGE_ALPHA = 25.0  # L2 penalty; shrinks per-team coefficients so a small, noisy
@@ -61,6 +73,31 @@ def load_schedule(season: int) -> pl.DataFrame:
     if not os.path.exists(path):
         return pl.DataFrame()
     return pl.read_csv(path).filter(pl.col("game_type") == "REG")
+
+
+def is_outdoor(roof) -> float:
+    """1.0 = outdoors (full weather exposure), 0.0 = dome/closed roof, 0.5 =
+    unknown (a retractable-roof stadium with no game-day decision yet)."""
+    if roof == "outdoors":
+        return 1.0
+    if roof in ("dome", "closed"):
+        return 0.0
+    return 0.5
+
+
+def add_game_context(games: pl.DataFrame, schedule: pl.DataFrame) -> pl.DataFrame:
+    """Join each team-game row to its own is_home/is_outdoor context from the
+    schedule. Both are known exactly in advance (unlike box-score stats),
+    so they're never averaged the way STAT_FEATURES are."""
+    if games.height == 0 or schedule.height == 0:
+        return games.with_columns(pl.lit(None, dtype=pl.Float64).alias("is_home"),
+                                   pl.lit(None, dtype=pl.Float64).alias("is_outdoor"))
+    ctx = schedule.select(["game_id", "home_team", "roof"])
+    joined = games.join(ctx, on="game_id", how="left")
+    return joined.with_columns([
+        (pl.col("team") == pl.col("home_team")).cast(pl.Float64).alias("is_home"),
+        pl.col("roof").map_elements(is_outdoor, return_dtype=pl.Float64).alias("is_outdoor"),
+    ])
 
 
 def points_for(schedule: pl.DataFrame, season: int, week: int, team: str):
@@ -194,7 +231,7 @@ def allowed_stats_avg(pool: pl.DataFrame, opponent: str, week_ranks: dict):
         for r in rows.to_dicts()
     ], dtype=float)
     return np.array(
-        [float(np.sum(winsorize(np.array(rows[f].to_list(), dtype=float)) * weights) / weights.sum()) for f in FEATURES],
+        [float(np.sum(winsorize(np.array(rows[f].to_list(), dtype=float)) * weights) / weights.sum()) for f in STAT_FEATURES],
         dtype=float,
     )
 
@@ -213,10 +250,10 @@ def main():
     season = int(sys.argv[1]) if len(sys.argv) > 1 else common.current_season()
     prev_season = season - 1
 
-    cur_games = load_team_games(season)
     cur_schedule = load_schedule(season)
-    prev_games = load_team_games(prev_season)
     prev_schedule = load_schedule(prev_season)
+    cur_games = add_game_context(load_team_games(season), cur_schedule)
+    prev_games = add_game_context(load_team_games(prev_season), prev_schedule)
 
     schedules = {season: cur_schedule, prev_season: prev_schedule}
     pool_frames = [g for g in (cur_games, prev_games) if g.height]
@@ -274,18 +311,20 @@ def main():
             continue
         seen_games.add(game["game_id"])
         home, away = game["home_team"], game["away_team"]
+        game_outdoor = is_outdoor(game.get("roof"))
 
-        def project(team_name, opp_name):
+        def project(team_name, opp_name, team_is_home):
             m = models.get(team_name, {})
             opp_allowed = allowed.get(opp_name)
             beta = m.get("beta")
             if beta is None or opp_allowed is None:
                 return m.get("avg_points")
-            x = np.concatenate([[1.0], opp_allowed])
+            context = np.array([1.0 if team_is_home else 0.0, game_outdoor])
+            x = np.concatenate([[1.0], opp_allowed, context])
             return float(beta @ x)
 
-        home_pts = project(home, away)
-        away_pts = project(away, home)
+        home_pts = project(home, away, team_is_home=True)
+        away_pts = project(away, home, team_is_home=False)
         spread_line = game.get("spread_line")  # home-favored margin per the market (positive = home favored)
         total_line = game.get("total_line")
 
