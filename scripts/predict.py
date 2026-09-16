@@ -73,14 +73,41 @@ def points_for(schedule: pl.DataFrame, season: int, week: int, team: str):
     return r["home_score"] if r["home_team"] == team else r["away_score"]
 
 
-def fit_ridge(X: np.ndarray, y: np.ndarray) -> np.ndarray:
-    """Ridge regression with an unpenalized intercept. Returns [intercept, coef...]."""
+def fit_ridge(X: np.ndarray, y: np.ndarray, scaler=None, prior_std: np.ndarray = None) -> np.ndarray:
+    """Ridge regression with an unpenalized intercept. Returns raw-scale
+    [intercept, coef...] (so callers evaluate it against raw allowed-stats
+    inputs unchanged), but fits internally on *standardized* features when
+    `scaler` (mean, std) is given, shrinking toward `prior_std` (also in
+    standardized units) instead of toward zero.
+
+    Why standardize: `attempts`/`carries` (small scale, std ~7-8) and their
+    own `passing_yards`/`rushing_yards` (std ~50-70) are highly correlated
+    pairs. An unstandardized ridge penalty — a flat sum(beta^2) — falls
+    unevenly across differently-scaled features, so with only ~17 games per
+    team the fit can land on an arbitrary, extreme split within a
+    correlated pair (e.g. all the rushing signal loaded onto "carries" with
+    a huge coefficient, sign flipping team to team) that a scale-comparable
+    penalty on standardized features prevents. Shrinking toward the
+    league-wide fit (instead of zero) then means a team's coefficients can
+    only deviate from that sane baseline as far as its own data supports.
+    """
     n, p = X.shape
-    Xa = np.hstack([np.ones((n, 1)), X])
+    if scaler is not None:
+        mean, std = scaler
+        Xs = (X - mean) / std
+    else:
+        Xs = X
+    Xa = np.hstack([np.ones((n, 1)), Xs])
     penalty = np.eye(p + 1) * RIDGE_ALPHA
     penalty[0, 0] = 0.0
-    beta = np.linalg.solve(Xa.T @ Xa + penalty, Xa.T @ y)
-    return beta
+    target = np.zeros(p + 1) if prior_std is None else np.asarray(prior_std)
+    beta_std = np.linalg.solve(Xa.T @ Xa + penalty, Xa.T @ y + penalty @ target)
+    if scaler is None:
+        return beta_std
+    # Convert standardized-space [intercept, coefs] back to raw-scale.
+    coef = beta_std[1:] / std
+    intercept = beta_std[0] - float(coef @ mean)
+    return np.concatenate([[intercept], coef])
 
 
 def r_squared(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
@@ -202,13 +229,35 @@ def main():
 
     teams = sorted(set(cur_schedule["home_team"].to_list()) | set(cur_schedule["away_team"].to_list()))
 
+    # League-average regression: same 5 inputs, fit on every team's games
+    # pooled together (~500+ rows, well-conditioned), in standardized units
+    # so its coefficients are on the same scale as each team's fit below.
+    # Used as the shrinkage target instead of zero.
+    all_X, all_y = [], []
+    for team in teams:
+        X, y = team_training_rows(pool, schedules, team)
+        if X.shape[0]:
+            all_X.append(X)
+            all_y.append(y)
+    if all_X:
+        Xall = np.vstack(all_X)
+        scaler = (Xall.mean(axis=0), Xall.std(axis=0))
+        Xall_std = (Xall - scaler[0]) / scaler[1]
+        n = Xall_std.shape[0]
+        Xa_all = np.hstack([np.ones((n, 1)), Xall_std])
+        # Plain (unshrunk) standardized fit — this becomes the shrinkage target.
+        league_prior_std = np.linalg.solve(Xa_all.T @ Xa_all, Xa_all.T @ np.concatenate(all_y))
+    else:
+        scaler = None
+        league_prior_std = None
+
     models = {}
     allowed = {}
     for team in teams:
         X, y = team_training_rows(pool, schedules, team)
 
         if X.shape[0] >= 2:
-            beta = fit_ridge(X, y)
+            beta = fit_ridge(X, y, scaler=scaler, prior_std=league_prior_std)
             r2 = r_squared(X, y, beta)
         else:
             beta = None  # not enough history anywhere; handled at prediction time
