@@ -559,7 +559,7 @@ function csvCell(value) {
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-function downloadCSV() {
+async function downloadCSV() {
   const games = SITE_DATA.games;
   if (!games.length) return;
   const week = games[0].week;
@@ -568,11 +568,29 @@ function downloadCSV() {
     CSV_COLUMNS.map(([, label]) => csvCell(label)).join(","),
     ...rows.map(g => CSV_COLUMNS.map(([key]) => csvCell(g[key])).join(",")),
   ];
-  const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const csvText = lines.join("\r\n");
+  const filename = `fourth-and-model-week-${week}-${SITE_DATA.season}.csv`;
+
+  // Inside the Artifact viewer, a frame can't trigger a browser download
+  // directly -- it has to go through the `downloads` capability instead.
+  if (window.claude && window.claude.use) {
+    try {
+      const downloads = await window.claude.use("downloads");
+      if (downloads) {
+        await downloads.save({ filename, data: csvText });
+        return;
+      }
+    } catch (err) {
+      if (err && err.code === "declined") return; // viewer said no, don't fall back
+      console.warn("downloads capability save failed, falling back", err);
+    }
+  }
+
+  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `fourth-and-model-week-${week}-${SITE_DATA.season}.csv`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
