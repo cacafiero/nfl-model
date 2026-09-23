@@ -50,6 +50,12 @@ def main():
     with open(os.path.join(common.DATA_DIR, f"predictions_{season}.json")) as f:
         predictions = json.load(f)
 
+    results_path = os.path.join(common.DATA_DIR, f"results_{season}.json")
+    results = None
+    if os.path.exists(results_path):
+        with open(results_path) as f:
+            results = json.load(f)
+
     teams = {}
     for abbr, r in rankings["teams"].items():
         teams[abbr] = {"name": TEAM_NAMES.get(abbr, abbr), **r}
@@ -63,6 +69,7 @@ def main():
         "teams": teams,
         "games": predictions["games"],
         "injuries": injuries,
+        "results": results,
     }
 
     with open(os.path.join(SITE_DIR, "template.html"), encoding="utf-8") as f:

@@ -101,6 +101,19 @@
   }
   .week-banner .rule { flex: 1; height: 1px; background: var(--line); }
   .week-banner .updated { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+  .csv-btn {
+    font-family: "Archivo", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--turf-soft);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .csv-btn:hover { border-color: var(--turf-soft); color: var(--turf); }
 
   h2.section-title {
     font-family: "Anton", sans-serif;
@@ -282,6 +295,34 @@
   .badge.mid { background: color-mix(in srgb, var(--ink-soft) 14%, transparent); color: var(--ink-soft); }
   .badge.bad { background: color-mix(in srgb, var(--bad) 24%, transparent); color: var(--bad); font-weight: 700; }
 
+  /* --- Track record --- */
+  .stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+  .stat-tile .stat-label {
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .stat-tile .stat-value {
+    font-family: "Anton", sans-serif;
+    font-size: 18px;
+    color: var(--ink);
+  }
+  .sub-note { font-size: 11px; color: var(--ink-soft); }
+
   footer {
     border-top: 1px solid var(--line);
     padding-top: 14px;
@@ -304,6 +345,7 @@
   <div class="week-banner">
     <div class="pill display" id="week-pill">WEEK —</div>
     <div class="rule"></div>
+    <button class="csv-btn" id="csv-download-btn" type="button">Download CSV</button>
     <div class="updated" id="updated-note">updated —</div>
   </div>
 
@@ -311,6 +353,28 @@
     <h2 class="section-title">This Week's Projections</h2>
     <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
+  </section>
+
+  <section id="results-section" hidden>
+    <h2 class="section-title">Track Record</h2>
+    <p class="section-sub">Graded against final scores, using the last prediction on the books before kickoff each week.</p>
+    <div class="stat-tiles" id="stat-tiles"></div>
+    <div class="table-scroll">
+      <table class="rankings" id="results-table">
+        <thead>
+          <tr>
+            <th>Wk</th>
+            <th>Matchup</th>
+            <th>Score</th>
+            <th>Spread</th>
+            <th>ATS</th>
+            <th>Total</th>
+            <th>O/U</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 
   <section id="rankings-section">
@@ -421,6 +485,102 @@ function renderMatchups() {
   }).join("");
 }
 
+function fmtRecord(r) {
+  if (!r || (r.wins === 0 && r.losses === 0 && r.pushes === 0)) return "—";
+  const pct = r.win_pct === null || r.win_pct === undefined ? "—" : `${(r.win_pct * 100).toFixed(1)}%`;
+  const pushStr = r.pushes ? `-${r.pushes}P` : "";
+  return `${r.wins}-${r.losses}${pushStr} (${pct})`;
+}
+
+function resultClass(result) {
+  if (result === "WIN") return "good";
+  if (result === "LOSS") return "bad";
+  return "mid";
+}
+
+function renderResults() {
+  const section = document.getElementById("results-section");
+  const results = SITE_DATA.results;
+  const summary = results && results.summary;
+  if (!summary || !summary.games_graded) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  const tiles = [
+    { label: "Against the Spread", value: fmtRecord(summary.ats) },
+    { label: "Over/Under", value: fmtRecord(summary.total) },
+    { label: "Straight Up", value: fmtRecord(summary.straight_up) },
+    { label: "Avg Score Error", value: `${fmtScore(summary.avg_margin_abs_error)} margin / ${fmtScore(summary.avg_total_abs_error)} total` },
+  ];
+  document.getElementById("stat-tiles").innerHTML = tiles.map(t => `
+    <div class="stat-tile">
+      <div class="stat-label">${t.label}</div>
+      <div class="stat-value">${t.value}</div>
+    </div>`).join("");
+
+  const rows = [...results.games].sort((a, b) => (b.week - a.week) || (b.gameday || "").localeCompare(a.gameday || ""));
+  document.querySelector("#results-table tbody").innerHTML = rows.map(g => {
+    const spreadFav = g.spread_line > 0 ? g.home_team : g.away_team;
+    const spreadTxt = g.spread_line === null || g.spread_line === undefined ? "—" : `${spreadFav} -${Math.abs(g.spread_line).toFixed(1)}`;
+    const totalTxt = g.total_line === null || g.total_line === undefined ? "—" : fmtScore(g.total_line);
+    return `
+      <tr>
+        <td>${g.week}</td>
+        <td class="team-cell">${g.away_team} @ ${g.home_team}</td>
+        <td>${g.away_score}&ndash;${g.home_score}</td>
+        <td>${spreadTxt}<br><span class="sub-note">pick ${g.pick_spread || "—"}</span></td>
+        <td><span class="badge ${resultClass(g.ats_result)}">${g.ats_result || "—"}</span></td>
+        <td>${totalTxt}<br><span class="sub-note">pick ${g.pick_total || "—"}</span></td>
+        <td><span class="badge ${resultClass(g.total_result)}">${g.total_result || "—"}</span></td>
+      </tr>`;
+  }).join("");
+}
+
+const CSV_COLUMNS = [
+  ["week", "Week"],
+  ["gameday", "Date"],
+  ["away_team", "Away"],
+  ["home_team", "Home"],
+  ["away_projected", "Away Projected"],
+  ["home_projected", "Home Projected"],
+  ["model_margin", "Model Margin (home - away)"],
+  ["model_total", "Model Total"],
+  ["spread_line", "Spread Line (home-favored)"],
+  ["total_line", "Total Line"],
+  ["pick_spread", "Pick ATS"],
+  ["pick_total", "Pick O/U"],
+];
+
+function csvCell(value) {
+  if (value === null || value === undefined) return "";
+  const str = typeof value === "number" ? (Number.isInteger(value) ? String(value) : value.toFixed(1)) : String(value);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function downloadCSV() {
+  const games = SITE_DATA.games;
+  if (!games.length) return;
+  const week = games[0].week;
+  const rows = games.filter(g => g.week === week);
+  const lines = [
+    CSV_COLUMNS.map(([, label]) => csvCell(label)).join(","),
+    ...rows.map(g => CSV_COLUMNS.map(([key]) => csvCell(g[key])).join(",")),
+  ];
+  const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `fourth-and-model-week-${week}-${SITE_DATA.season}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("csv-download-btn").addEventListener("click", downloadCSV);
+
 let sortKey = "combined";
 let sortAsc = true;
 
@@ -469,5 +629,6 @@ document.querySelectorAll("#rankings-table thead th").forEach(th => {
 
 document.getElementById("updated-note").textContent = `updated ${SITE_DATA.updated}`;
 renderMatchups();
+renderResults();
 renderRankings();
 </script>
