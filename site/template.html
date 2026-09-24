@@ -545,6 +545,8 @@ const CSV_COLUMNS = [
   ["home_team", "Home"],
   ["away_projected", "Away Projected"],
   ["home_projected", "Home Projected"],
+  ["away_r_squared", "Away R²", 2],
+  ["home_r_squared", "Home R²", 2],
   ["model_margin", "Model Margin (home - away)"],
   ["model_total", "Model Total"],
   ["spread_line", "Spread Line (home-favored)"],
@@ -553,9 +555,9 @@ const CSV_COLUMNS = [
   ["pick_total", "Pick O/U"],
 ];
 
-function csvCell(value) {
+function csvCell(value, decimals = 1) {
   if (value === null || value === undefined) return "";
-  const str = typeof value === "number" ? (Number.isInteger(value) ? String(value) : value.toFixed(1)) : String(value);
+  const str = typeof value === "number" ? (Number.isInteger(value) ? String(value) : value.toFixed(decimals)) : String(value);
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
@@ -566,7 +568,7 @@ async function downloadCSV() {
   const rows = games.filter(g => g.week === week);
   const lines = [
     CSV_COLUMNS.map(([, label]) => csvCell(label)).join(","),
-    ...rows.map(g => CSV_COLUMNS.map(([key]) => csvCell(g[key])).join(",")),
+    ...rows.map(g => CSV_COLUMNS.map(([key, , decimals]) => csvCell(g[key], decimals)).join(",")),
   ];
   const csvText = lines.join("\r\n");
   const filename = `fourth-and-model-week-${week}-${SITE_DATA.season}.csv`;
