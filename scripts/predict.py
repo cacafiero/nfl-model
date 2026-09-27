@@ -159,6 +159,22 @@ def r_squared(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
     return float(np.corrcoef(y, y_hat)[0, 1] ** 2)
 
 
+def residual_std(X: np.ndarray, y: np.ndarray, beta: np.ndarray):
+    """Root-mean-squared residual of the fit against its own training
+    games -- a rough +/- points range for this team's projection. Unlike
+    R-squared (a unitless fraction of variance explained), this gives a
+    number in the same units as the projected score. It's computed
+    in-sample against the same rows used to fit beta, so -- like the
+    R-squared above -- it likely understates the error on a new game
+    against an opponent the training window didn't see, but it's a useful
+    per-team dispersion signal alongside R-squared."""
+    if len(y) < 2:
+        return None
+    Xa = np.hstack([np.ones((X.shape[0], 1)), X])
+    residuals = y - Xa @ beta
+    return float(np.sqrt(np.mean(residuals ** 2)))
+
+
 def recent_rows(pool: pl.DataFrame, team_col: str, team: str, window: int = WINDOW) -> pl.DataFrame:
     """The `window` most recent regular-season rows for `team`, newest first,
     drawn from the combined current+prior season pool."""
@@ -296,11 +312,16 @@ def main():
         if X.shape[0] >= 2:
             beta = fit_ridge(X, y, scaler=scaler, prior_std=league_prior_std)
             r2 = r_squared(X, y, beta)
+            rmse = residual_std(X, y, beta)
         else:
             beta = None  # not enough history anywhere; handled at prediction time
             r2 = None
+            rmse = None
 
-        models[team] = {"beta": beta, "avg_points": float(y.mean()) if len(y) else None, "r_squared": r2}
+        models[team] = {
+            "beta": beta, "avg_points": float(y.mean()) if len(y) else None,
+            "r_squared": r2, "rmse": rmse,
+        }
         allowed[team] = allowed_stats_avg(pool, team, week_ranks)
 
     predictions = []
@@ -347,6 +368,8 @@ def main():
             "away_projected": away_pts,
             "home_r_squared": models.get(home, {}).get("r_squared"),
             "away_r_squared": models.get(away, {}).get("r_squared"),
+            "home_rmse": models.get(home, {}).get("rmse"),
+            "away_rmse": models.get(away, {}).get("rmse"),
             "spread_line": spread_line,
             "total_line": total_line,
             "home_moneyline": game.get("home_moneyline"),

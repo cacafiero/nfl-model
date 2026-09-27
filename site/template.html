@@ -414,6 +414,11 @@ function fmtR2(n) {
   return n === null || n === undefined ? "R² —" : `R² ${n.toFixed(2)}`;
 }
 
+function fmtFit(r2, rmse) {
+  const rmseText = rmse === null || rmse === undefined ? "" : ` · ±${rmse.toFixed(1)}`;
+  return `${fmtR2(r2)}${rmseText}`;
+}
+
 function rankBadge(rank) {
   const cls = rank <= 10 ? "good" : rank <= 22 ? "mid" : "bad";
   return `<span class="badge ${cls}">${rank}</span>`;
@@ -466,12 +471,12 @@ function renderMatchups() {
         <div class="meta"><span>${g.gameday || ""}</span><span>${g.game_id}</span></div>
         <div class="row${!homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.away_team}</span>${away.name || g.away_team}</div>
-          <div class="r-val">${fmtR2(g.away_r_squared)}</div>
+          <div class="r-val">${fmtFit(g.away_r_squared, g.away_rmse)}</div>
           <div class="score">${fmtScore(as)}</div>
         </div>
         <div class="row${homeWins ? " winner" : ""}">
           <div class="team"><span class="abbr">${g.home_team}</span>${home.name || g.home_team}</div>
-          <div class="r-val">${fmtR2(g.home_r_squared)}</div>
+          <div class="r-val">${fmtFit(g.home_r_squared, g.home_rmse)}</div>
           <div class="score">${fmtScore(hs)}</div>
         </div>
         <div class="bar-track">
@@ -546,7 +551,9 @@ const CSV_COLUMNS = [
   ["away_projected", "Away Projected"],
   ["home_projected", "Home Projected"],
   ["away_r_squared", "Away R²", 2],
+  ["away_rmse", "Away RMSE", 2],
   ["home_r_squared", "Home R²", 2],
+  ["home_rmse", "Home RMSE", 2],
   ["model_margin", "Model Margin (home - away)"],
   ["model_total", "Model Total"],
   ["spread_line", "Spread Line (home-favored)"],
