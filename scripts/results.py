@@ -8,11 +8,19 @@ week's predictions (projected scores, spread/total lines, picks) as a
 SITE_DATA blob -- so git history doubles as a prediction archive.
 
 For each completed game, this script walks the git history of
-docs/index.html, finds the most recent snapshot that included a
-prediction for that game AND was committed before the game's kickoff
-(so later same-week model tweaks don't leak in a change made after the
-result was known), and grades that prediction against the actual score:
-against-the-spread, over/under, and straight-up (who actually won).
+docs/index.html and grades the LAST snapshot that still included a
+prediction for that game (predict.py only ever lists a team's next
+*unplayed* game, so a game's presence in a snapshot already guarantees
+that snapshot's data didn't know the result yet -- taking the latest
+such snapshot just gets the most-refined pre-result prediction, with
+no leakage regardless of the real-world kickoff clock) against the
+actual score: against-the-spread, over/under, and straight-up (who
+actually won).
+
+A game that was already final by the time this repo's git history
+begins (the very first commit) never has a surviving prediction and is
+just skipped -- there's no way to reconstruct one without fabricating
+data.
 
 Usage: python results.py [season]
 """
@@ -22,7 +30,6 @@ import re
 import subprocess
 import sys
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import common
 import polars as pl
@@ -30,7 +37,6 @@ import polars as pl
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS_PATH = "docs/index.html"
 SITE_DATA_RE = re.compile(r"const SITE_DATA = (\{.*?\});\s*\n\s*function fmtScore", re.DOTALL)
-KICKOFF_TZ = ZoneInfo("America/New_York")  # NFL schedule times are published in ET
 
 
 def git_history(path: str):
@@ -73,22 +79,11 @@ def collect_predictions_by_game():
     return by_game
 
 
-def kickoff_datetime(gameday: str, gametime: str):
-    if not gameday or not gametime:
-        return None
-    date_part = datetime.fromisoformat(gameday).date()
-    hour, minute = (int(x) for x in gametime.split(":"))
-    return datetime(date_part.year, date_part.month, date_part.day, hour, minute, tzinfo=KICKOFF_TZ)
-
-
-def prediction_for(candidates, kickoff):
-    """Most recent (commit_dt, game_dict) strictly before kickoff, or None."""
-    if kickoff is None:
-        return candidates[-1][1] if candidates else None
-    before = [c for c in candidates if c[0] < kickoff]
-    if not before:
-        return None
-    return max(before, key=lambda c: c[0])[1]
+def latest_prediction(candidates):
+    """`candidates` is oldest-first; the last entry is the most-refined
+    snapshot that still listed this game as upcoming (see module docstring
+    for why that's always leakage-free)."""
+    return candidates[-1][1] if candidates else None
 
 
 def grade_side(pick, favored_if_pick_a, actual_diff, line):
@@ -207,10 +202,7 @@ def main():
     graded = []
     for row in schedule.to_dicts():
         candidates = predictions_by_game.get(row["game_id"])
-        if not candidates:
-            continue
-        kickoff = kickoff_datetime(row["gameday"], row["gametime"])
-        pred = prediction_for(candidates, kickoff)
+        pred = latest_prediction(candidates) if candidates else None
         if pred is None:
             continue
         graded.append(grade_game(pred, row))
