@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Peoria">
+<meta name="theme-color" content="#eef1ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1712" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Peoria Six</title>
+<style>
+  :root {
+    --bg: #eef1ea;
+    --card: #fbfcf9;
+    --ink: #16231b;
+    --ink-soft: #55665a;
+    --line: #d3dacf;
+    --accent: #1f6b45;
+    --accent-ink: #ffffff;
+    --accent-soft: #dcebe1;
+    --flag: #c8372d;
+    --under: #d6ebdd;
+    --over: #f4d9d5;
+    --shadow: 0 1px 0 rgba(22, 35, 27, 0.06);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    --font-num: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1712;
+      --card: #16231b;
+      --ink: #e8f0e9;
+      --ink-soft: #9db0a2;
+      --line: #27382d;
+      --accent: #4cc38a;
+      --accent-ink: #06180e;
+      --accent-soft: #1d3a2a;
+      --flag: #ff6b5e;
+      --under: #1d3d2b;
+      --over: #4a2320;
+      --shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.4;
+    min-height: 100vh;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    touch-action: manipulation;
+    font-variant-numeric: tabular-nums;
+  }
+  body.lock { overflow: hidden; }
+  button { font: inherit; color: inherit; touch-action: manipulation; }
+  button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .top {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg);
+    padding: calc(10px + env(safe-area-inset-top)) 18px 10px;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-family: var(--font-num); font-weight: 800; font-size: 22px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 9px; }
+  .flag { width: 14px; height: 20px; position: relative; display: inline-block; }
+  .flag::before { content: ""; position: absolute; left: 1px; top: 0; width: 2px; height: 20px; background: var(--ink); border-radius: 1px; }
+  .flag::after { content: ""; position: absolute; left: 3px; top: 1px; border-left: 11px solid var(--flag); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  .sub { color: var(--ink-soft); font-size: 13px; }
+
+  main { padding: 16px 16px 8px; max-width: 560px; margin: 0 auto; }
+  h2 { font-family: var(--font-num); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin: 22px 2px 8px; }
+  h2:first-child { margin-top: 4px; }
+  p.note { color: var(--ink-soft); font-size: 14px; margin: 8px 2px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+
+  /* tab bar */
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: var(--card); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabs button { background: none; border: 0; padding: 12px 4px 14px; font-weight: 600; font-size: 15px; color: var(--ink-soft); min-height: 56px; position: relative; }
+  .tabs button.on { color: var(--accent); }
+  .tabs button.on::before { content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; background: var(--accent); border-radius: 0 0 3px 3px; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.danger { color: var(--flag); }
+  .btn.small { min-height: 40px; padding: 0 14px; font-size: 14px; }
+  .btn:active { transform: translateY(1px); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row.wrap { flex-wrap: wrap; }
+  .grow { flex: 1; }
+
+  /* hole grids (6 across = the six-hole rhythm of the game) */
+  .holes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .hole {
+    border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+    min-height: 58px; padding: 6px 2px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    position: relative;
+  }
+  .hole .hn { font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+  .hole .pv { font-family: var(--font-num); font-size: 22px; font-weight: 800; line-height: 1.1; }
+  .hole.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .hole.sel .hn { color: var(--accent-ink); opacity: 0.85; }
+  .hole.sel::after { content: ""; position: absolute; top: 5px; right: 6px; border-left: 9px solid var(--flag); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+
+  /* settings rows */
+  .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); min-height: 60px; }
+  .setting:last-child { border-bottom: 0; }
+  .setting .lbl b { display: block; font-weight: 600; }
+  .setting .lbl span { color: var(--ink-soft); font-size: 13px; }
+  .stepper { display: flex; align-items: center; gap: 4px; }
+  .stepper button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-size: 22px; font-weight: 600; cursor: pointer; }
+  .stepper output { min-width: 52px; text-align: center; font-family: var(--font-num); font-weight: 800; font-size: 20px; }
+  .switch { width: 54px; height: 32px; border-radius: 16px; border: 0; background: var(--line); position: relative; cursor: pointer; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(22px); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; flex: none; }
+  .seg button { border: 0; background: var(--bg); padding: 0 14px; min-height: 44px; font-weight: 600; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+  /* players */
+  .add { display: flex; gap: 10px; margin-bottom: 14px; }
+  .add input { flex: 1; min-width: 0; min-height: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); padding: 0 14px; font: inherit; font-size: 16px; color: var(--ink); }
+  .player { width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; padding: 14px; margin-bottom: 8px; cursor: pointer; }
+  .player .nm { font-weight: 700; font-size: 17px; }
+  .player .meta { color: var(--ink-soft); font-size: 13px; }
+  .player .prog { margin-left: auto; text-align: right; font-family: var(--font-num); }
+  .player .prog b { font-size: 22px; font-weight: 800; display: block; line-height: 1.1; }
+  .player .prog span { font-size: 12px; color: var(--ink-soft); font-family: var(--font); }
+  .empty { text-align: center; padding: 34px 16px; color: var(--ink-soft); }
+
+  /* leaderboard */
+  details.lb { margin-bottom: 8px; }
+  details.lb summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; min-height: 64px; }
+  details.lb summary::-webkit-details-marker { display: none; }
+  .rk { font-family: var(--font-num); font-weight: 800; font-size: 20px; width: 34px; color: var(--accent); }
+  .lb .nm { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .lb .net { font-family: var(--font-num); font-weight: 800; font-size: 30px; line-height: 1; text-align: right; }
+  .lb .net small { display: block; font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; }
+  .lb .bd { border-top: 1px solid var(--line); padding: 12px 14px 14px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .stats div { background: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stats b { display: block; font-family: var(--font-num); font-size: 22px; color: var(--ink); letter-spacing: 0; text-transform: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip { background: var(--accent-soft); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+  .chip b { font-family: var(--font-num); }
+  .chip s { color: var(--ink-soft); margin-left: 4px; }
+  .calc { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .calc b { color: var(--ink); }
+  .wait { padding: 12px 14px; font-size: 14px; color: var(--ink-soft); }
+
+  /* score entry sheet */
+  .sheet { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; }
+  .sheet[hidden] { display: none; }
+  .sheet-head { padding: calc(10px + env(safe-area-inset-top)) 12px 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+  .sheet-head .who { flex: 1; min-width: 0; text-align: center; }
+  .sheet-head .who b { display: block; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sheet-head .who span { font-size: 13px; color: var(--ink-soft); }
+  .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 24px; line-height: 1; cursor: pointer; }
+  .icon-btn:disabled { opacity: 0.3; }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  .cell { border: 1px solid var(--line); background: var(--card); border-radius: 10px; min-height: 64px; padding: 4px 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+  .cell .hn { font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+  .cell .par { font-size: 10px; color: var(--ink-soft); }
+  .cell b { font-family: var(--font-num); font-size: 24px; font-weight: 800; line-height: 1.15; min-height: 28px; }
+  .cell.under { background: var(--under); }
+  .cell.over { background: var(--over); }
+  .cell.sel { outline: 3px solid var(--accent); outline-offset: -1px; }
+  .totals { display: flex; justify-content: space-between; margin: 12px 2px 0; font-size: 14px; color: var(--ink-soft); }
+  .totals b { color: var(--ink); font-family: var(--font-num); font-size: 16px; }
+  .sheet-tools { display: flex; gap: 10px; margin-top: 14px; }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); }
+  .pad button { min-height: 58px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-family: var(--font-num); font-size: 26px; font-weight: 700; cursor: pointer; }
+  .pad button:active { background: var(--accent-soft); }
+  .pad button small { display: block; font-family: var(--font); font-size: 10px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.04em; }
+  .pad .act { font-size: 18px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 86vw; text-align: center; }
+  .toast[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="flag"></span>Peoria Six</div>
+  <div class="sub" id="sub"></div>
+</header>
+<main id="view"></main>
+<nav class="tabs" id="tabs" aria-label="Sections">
+  <button data-act="tab" data-tab="scores">Scores</button>
+  <button data-act="tab" data-tab="results">Results</button>
+  <button data-act="tab" data-tab="setup">Setup</button>
+</nav>
+<div class="sheet" id="sheet" hidden role="dialog" aria-label="Enter scores"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+<noscript><p style="padding:20px">This scorer needs JavaScript turned on.</p></noscript>
+
+<script>
+(() => {
+  "use strict";
+
+  const KEY = "peoria-six-v1";
+  const DEFAULT_PARS = [4, 4, 3, 5, 4, 4, 3, 4, 5, 4, 3, 5, 4, 4, 3, 4, 4, 5];
+  const defaults = () => ({
+    pars: DEFAULT_PARS.slice(),
+    six: [],
+    players: [],
+    settings: { allowance: 80, cap: true, round: "whole", noNegative: false },
+    tab: "scores",
+  });
+
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY));
+      if (saved && Array.isArray(saved.pars) && saved.pars.length === 18) {
+        const d = defaults();
+        return Object.assign(d, saved, { settings: Object.assign(d.settings, saved.settings) });
+      }
+    } catch (e) { /* fall through to defaults */ }
+    return defaults();
+  }
+
+  let state = load();
+  const ui = { editing: null, cell: 0, focusAdd: false };
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode: keep going in memory */ }
+  }
+
+  const $ = (sel) => document.querySelector(sel);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const totalPar = () => state.pars.reduce((a, b) => a + b, 0);
+  const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const signed = (n) => (n === 0 ? "E" : n > 0 ? "+" + n : String(n));
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+
+  /* ---------- scoring ---------- */
+
+  function roundHcp(x) {
+    return state.settings.round === "tenth" ? Math.round(x * 10) / 10 : Math.round(x);
+  }
+
+  function calc(player) {
+    const s = player.scores;
+    const filled = s.filter((v) => v != null).length;
+    const gross = filled === 18 ? s.reduce((a, b) => a + b, 0) : null;
+    const out = { filled, gross, ready: false };
+    if (state.six.length !== 6 || gross == null) return out;
+    let sixTotal = 0;
+    const holes = [];
+    for (const i of state.six) {
+      const raw = s[i];
+      const used = state.settings.cap ? Math.min(raw, 2 * state.pars[i]) : raw;
+      holes.push({ hole: i + 1, raw, used });
+      sixTotal += used;
+    }
+    const par = totalPar();
+    const rawHcp = (sixTotal * 3 - par) * (state.settings.allowance / 100);
+    let hcp = roundHcp(rawHcp);
+    let floored = false;
+    if (state.settings.noNegative && hcp < 0) { hcp = 0; floored = true; }
+    const net = Math.round((gross - hcp) * 10) / 10;
+    return Object.assign(out, { ready: true, sixTotal, holes, par, rawHcp, hcp, floored, net });
+  }
+
+  function leaderboard() {
+    const rows = state.players.map((p) => ({ p, c: calc(p) })).filter((r) => r.c.ready);
+    rows.sort((a, b) => a.c.net - b.c.net || a.c.gross - b.c.gross || a.p.name.localeCompare(b.p.name));
+    rows.forEach((r) => {
+      r.rank = rows.filter((o) => o.c.net < r.c.net).length + 1;
+      r.tied = rows.filter((o) => o.c.net === r.c.net).length > 1;
+    });
+    return rows;
+  }
+
+  function toParSoFar(player) {
+    let d = 0, n = 0, g = 0;
+    player.scores.forEach((v, i) => { if (v != null) { d += v - state.pars[i]; g += v; n++; } });
+    return { n, g, d };
+  }
+
+  function randomSix() {
+    const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const byPar = { 3: [], 4: [], 5: [] };
+    state.pars.forEach((p, i) => byPar[p] && byPar[p].push(i));
+    let chosen = [];
+    [3, 4, 5].forEach((p) => { chosen = chosen.concat(shuffle(byPar[p]).slice(0, 2)); });
+    if (chosen.length < 6) {
+      const rest = shuffle([...Array(18).keys()].filter((i) => !chosen.includes(i)));
+      while (chosen.length < 6) chosen.push(rest.pop());
+    }
+    state.six = chosen.sort((a, b) => a - b);
+  }
+
+  /* ---------- views ---------- */
+
+  function holeGrid(cellFn) {
+    return `<div class="holes">${state.pars.map((_, i) => cellFn(i)).join("")}</div>`;
+  }
+
+  function viewSetup() {
+    const st = state.settings;
+    return `
+      <h2>Course pars</h2>
+      <div class="card" style="padding:12px">
+        ${holeGrid((i) => `<button class="hole" data-act="par" data-i="${i}" aria-label="Hole ${i + 1}, par ${state.pars[i]}. Tap to change."><span class="hn">${i + 1}</span><span class="pv">${state.pars[i]}</span></button>`)}
+        <p class="note" style="margin-bottom:0">Tap a hole to cycle par 3, 4, 5. Total par <b>${totalPar()}</b>.</p>
+      </div>
+
+      <h2>Rules</h2>
+      <div class="card">
+        <div class="setting">
+          <div class="lbl"><b>Handicap allowance</b><span>Share of the difference you get</span></div>
+          <div class="stepper">
+            <button data-act="allow" data-d="-5" aria-label="Lower allowance">&minus;</button>
+            <output>${st.allowance}%</output>
+            <button data-act="allow" data-d="5" aria-label="Raise allowance">+</button>
+          </div>
+        </div>
+        <div class="setting">
+          <div class="lbl"><b>Cap holes at double par</b><span>For the six-hole total only</span></div>
+          <button class="switch ${st.cap ? "on" : ""}" data-act="cap" role="switch" aria-checked="${st.cap}" aria-label="Cap holes at double par"></button>
+        </div>
+        <div class="setting">
+          <div class="lbl"><b>Round handicap</b><span>To a whole number or a tenth</span></div>
+          <div class="seg">
+            <button class="${st.round === "whole" ? "on" : ""}" data-act="round" data-v="whole">Whole</button>
+            <button class="${st.round === "tenth" ? "on" : ""}" data-act="round" data-v="tenth">0.1</button>
+          </div>
+        </div>
+        <div class="setting">
+          <div class="lbl"><b>No negative handicaps</b><span>Floor handicap at zero</span></div>
+          <button class="switch ${st.noNegative ? "on" : ""}" data-act="neg" role="switch" aria-checked="${st.noNegative}" aria-label="No negative handicaps"></button>
+        </div>
+      </div>
+
+      <h2>How it works</h2>
+      <p class="note">Play 18 and keep every score. Afterward, pick six secret holes (usually two par 3s, two par 4s and two par 5s). Add those six scores, multiply by 3, subtract course par, then take ${st.allowance}%. That is the handicap. Net score is gross minus handicap.</p>
+
+      <h2>Data</h2>
+      <div class="row wrap">
+        <button class="btn danger" data-act="clear-scores">Clear all scores</button>
+        <button class="btn danger" data-act="reset-all">Reset everything</button>
+      </div>
+      <p class="note">Everything stays on this phone. Nothing is uploaded.</p>`;
+  }
+
+  function viewScores() {
+    const list = state.players.map((p) => {
+      const t = toParSoFar(p);
+      const done = t.n === 18;
+      return `
+        <button class="card player" data-act="open" data-id="${p.id}">
+          <div>
+            <div class="nm">${esc(p.name)}</div>
+            <div class="meta">${done ? "All 18 in" : `${t.n} of 18 holes`}</div>
+          </div>
+          <div class="prog"><b>${t.n ? t.g : "&ndash;"}</b><span>${t.n ? `${signed(t.d)} thru ${t.n}` : "tap to score"}</span></div>
+        </button>`;
+    }).join("");
+    return `
+      <h2>Players</h2>
+      <form class="add" data-form="add" autocomplete="off">
+        <input name="name" type="text" placeholder="Add a player" maxlength="30" enterkeyhint="done" autocapitalize="words" aria-label="Player name">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      ${list || `<div class="card empty">Add your group, then tap a name to enter scores hole by hole.</div>`}`;
+  }
+
+  function viewResults() {
+    const six = state.six;
+    const chooser = holeGrid((i) => `
+      <button class="hole ${six.includes(i) ? "sel" : ""}" data-act="six" data-i="${i}" aria-pressed="${six.includes(i)}" aria-label="Hole ${i + 1}, par ${state.pars[i]}${six.includes(i) ? ", selected" : ""}">
+        <span class="hn">${i + 1}</span><span class="pv">${state.pars[i]}</span>
+      </button>`);
+
+    const rows = leaderboard();
+    const waiting = state.players.filter((p) => !calc(p).ready);
+
+    let body = "";
+    if (!state.players.length) {
+      body = `<div class="card empty">Add players and enter their scores first.</div>`;
+    } else if (six.length !== 6) {
+      body = `<p class="note">Pick six holes above to see the results.</p>`;
+    } else {
+      body = rows.map((r) => {
+        const c = r.c;
+        const capped = c.holes.some((h) => h.raw !== h.used);
+        const chips = c.holes.map((h) => `<span class="chip">#${h.hole} <b>${h.used}</b>${h.raw !== h.used ? `<s>${h.raw}</s>` : ""}</span>`).join("");
+        const diff = c.sixTotal * 3 - c.par;
+        const rawTxt = String(Math.round(c.rawHcp * 100) / 100);
+        return `
+          <details class="card lb">
+            <summary>
+              <span class="rk">${r.tied ? "T" : ""}${r.rank}</span>
+              <span class="nm">${esc(r.p.name)}</span>
+              <span class="net">${fmt(c.net)}<small>net</small></span>
+            </summary>
+            <div class="bd">
+              <div class="stats">
+                <div><b>${c.gross}</b>gross</div>
+                <div><b>${fmt(c.hcp)}</b>handicap</div>
+                <div><b>${c.sixTotal}</b>six holes</div>
+              </div>
+              <div class="chips">${chips}</div>
+              <p class="calc">${c.sixTotal} &times; 3 = ${c.sixTotal * 3}, minus par ${c.par} = <b>${diff}</b>, &times; ${state.settings.allowance}% = ${rawTxt} &rarr; handicap <b>${fmt(c.hcp)}</b>${c.floored ? " (floored at 0)" : ""}.<br>Net = ${c.gross} &minus; ${fmt(c.hcp)} = <b>${fmt(c.net)}</b>.${capped ? " Crossed-out scores were capped at double par." : ""}</p>
+            </div>
+          </details>`;
+      }).join("");
+      if (waiting.length) {
+        body += `<div class="card wait">Waiting on scores: ${waiting.map((p) => `${esc(p.name)} (${p.scores.filter((v) => v != null).length}/18)`).join(", ")}</div>`;
+      }
+      if (rows.length) body += `<div class="row" style="margin-top:12px"><button class="btn grow" data-act="share">Share results</button></div>`;
+    }
+
+    return `
+      <h2>The six holes</h2>
+      <div class="card" style="padding:12px">
+        ${chooser}
+        <div class="row wrap" style="margin-top:12px">
+          <span class="sub grow">${six.length} of 6 chosen</span>
+          <button class="btn small" data-act="random-six">Random 2-2-2</button>
+          <button class="btn small" data-act="clear-six">Clear</button>
+        </div>
+      </div>
+      <h2>Leaderboard</h2>
+      ${body}`;
+  }
+
+  /* ---------- score entry sheet ---------- */
+
+  function renderSheet() {
+    const sheet = $("#sheet");
+    const p = state.players.find((x) => x.id === ui.editing);
+    if (!p) {
+      sheet.hidden = true;
+      sheet.innerHTML = "";
+      document.body.classList.remove("lock");
+      return;
+    }
+    sheet.hidden = false;
+    document.body.classList.add("lock");
+
+    const idx = state.players.indexOf(p);
+    const multi = state.players.length > 1;
+    const t = toParSoFar(p);
+    const sum = (a, b) => p.scores.slice(a, b).reduce((x, v) => x + (v || 0), 0);
+    const cells = p.scores.map((v, i) => {
+      const d = v == null ? null : v - state.pars[i];
+      const cls = d == null ? "" : d < 0 ? "under" : d >= 2 ? "over" : "";
+      return `<button class="cell ${cls} ${i === ui.cell ? "sel" : ""}" data-act="cell" data-i="${i}" aria-label="Hole ${i + 1}, par ${state.pars[i]}${v == null ? ", no score" : ", score " + v}"><span class="hn">${i + 1}</span><span class="par">par ${state.pars[i]}</span><b>${v == null ? "" : v}</b></button>`;
+    }).join("");
+
+    sheet.innerHTML = `
+      <div class="sheet-head">
+        <button class="icon-btn" data-act="prev" ${multi ? "" : "disabled"} aria-label="Previous player">&lsaquo;</button>
+        <div class="who"><b>${esc(p.name)}</b><span>${t.n} of 18${t.n ? ` &middot; ${t.g} (${signed(t.d)})` : ""}</span></div>
+        <button class="icon-btn" data-act="next" ${multi ? "" : "disabled"} aria-label="Next player">&rsaquo;</button>
+        <button class="btn small primary" data-act="done">Done</button>
+      </div>
+      <div class="sheet-body">
+        <div class="holes">${cells}</div>
+        <div class="totals"><span>Out <b>${sum(0, 9)}</b></span><span>In <b>${sum(9, 18)}</b></span><span>Total <b>${t.g}</b></span></div>
+        <div class="sheet-tools">
+          <button class="btn small grow" data-act="rename">Rename</button>
+          <button class="btn small grow danger" data-act="remove">Remove player</button>
+        </div>
+      </div>
+      <div class="pad">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-act="key" data-k="${n}">${n}</button>`).join("")}
+        <button data-act="key" data-k="10">10</button>
+        <button data-act="key" data-k="max">Max<small>double par</small></button>
+        <button class="act" data-act="key" data-k="del" aria-label="Clear this hole">&#9003;</button>
+      </div>`;
+  }
+
+  function pressKey(k) {
+    const p = state.players.find((x) => x.id === ui.editing);
+    if (!p) return;
+    const i = ui.cell;
+    if (k === "del") p.scores[i] = null;
+    else p.scores[i] = k === "max" ? 2 * state.pars[i] : Number(k);
+    save();
+    if (k !== "del") {
+      let next = p.scores.findIndex((v, j) => j > i && v == null);
+      if (next < 0) next = p.scores.findIndex((v) => v == null);
+      if (next >= 0) ui.cell = next;
+      else if (i < 17) ui.cell = i + 1;
+    }
+    renderSheet();
+    renderMain();
+  }
+
+  function openPlayer(id) {
+    ui.editing = id;
+    const p = state.players.find((x) => x.id === id);
+    const first = p.scores.findIndex((v) => v == null);
+    ui.cell = first >= 0 ? first : 0;
+    renderSheet();
+  }
+
+  function stepPlayer(dir) {
+    const n = state.players.length;
+    if (n < 2) return;
+    const i = state.players.findIndex((x) => x.id === ui.editing);
+    openPlayer(state.players[(i + dir + n) % n].id);
+  }
+
+  /* ---------- sharing ---------- */
+
+  async function share() {
+    const rows = leaderboard();
+    const holes = state.six.map((i) => i + 1).join(", ");
+    const text = [`Peoria - six holes: ${holes}`]
+      .concat(rows.map((r) => `${r.tied ? "T" : ""}${r.rank}. ${r.p.name}: net ${fmt(r.c.net)} (gross ${r.c.gross}, handicap ${fmt(r.c.hcp)})`))
+      .join("\n");
+    try {
+      if (navigator.share) { await navigator.share({ title: "Peoria results", text }); return; }
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+    try { await navigator.clipboard.writeText(text); toast("Results copied"); }
+    catch (e) { toast("Could not copy results"); }
+  }
+
+  /* ---------- render + events ---------- */
+
+  function renderMain() {
+    document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
+    const view = $("#view");
+    const y = window.scrollY;
+    view.innerHTML = state.tab === "setup" ? viewSetup() : state.tab === "results" ? viewResults() : viewScores();
+    window.scrollTo(0, y);
+    const n = state.players.length;
+    $("#sub").textContent = `${n} player${n === 1 ? "" : "s"} · par ${totalPar()}`;
+    if (ui.focusAdd) { ui.focusAdd = false; const i = view.querySelector("input[name=name]"); if (i) i.focus(); }
+  }
+
+  function render() { renderMain(); renderSheet(); }
+
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    const a = el.dataset.act;
+    const s = state.settings;
+    switch (a) {
+      case "tab": state.tab = el.dataset.tab; save(); window.scrollTo(0, 0); return render();
+      case "par": { const i = +el.dataset.i; state.pars[i] = state.pars[i] === 5 ? 3 : state.pars[i] + 1; break; }
+      case "allow": s.allowance = Math.max(0, Math.min(100, s.allowance + Number(el.dataset.d))); break;
+      case "cap": s.cap = !s.cap; break;
+      case "neg": s.noNegative = !s.noNegative; break;
+      case "round": s.round = el.dataset.v; break;
+      case "clear-scores":
+        if (!confirm("Clear every score for every player?")) return;
+        state.players.forEach((p) => { p.scores = Array(18).fill(null); });
+        break;
+      case "reset-all":
+        if (!confirm("Delete all players, scores, pars and settings?")) return;
+        state = defaults();
+        ui.editing = null;
+        break;
+      case "open": return openPlayer(el.dataset.id);
+      case "six": {
+        const i = +el.dataset.i;
+        if (state.six.includes(i)) state.six = state.six.filter((x) => x !== i);
+        else if (state.six.length >= 6) return toast("Only six holes. Tap one to remove it first.");
+        else state.six = state.six.concat(i).sort((x, y) => x - y);
+        break;
+      }
+      case "random-six": randomSix(); break;
+      case "clear-six": state.six = []; break;
+      case "share": return share();
+      case "cell": ui.cell = +el.dataset.i; return renderSheet();
+      case "key": return pressKey(el.dataset.k);
+      case "prev": return stepPlayer(-1);
+      case "next": return stepPlayer(1);
+      case "done": ui.editing = null; return render();
+      case "rename": {
+        const p = state.players.find((x) => x.id === ui.editing);
+        const name = prompt("Player name", p.name);
+        if (name && name.trim()) { p.name = name.trim().slice(0, 30); save(); render(); }
+        return;
+      }
+      case "remove": {
+        const p = state.players.find((x) => x.id === ui.editing);
+        if (!confirm(`Remove ${p.name} and their scores?`)) return;
+        state.players = state.players.filter((x) => x.id !== p.id);
+        ui.editing = null;
+        break;
+      }
+      default: return;
+    }
+    save();
+    render();
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (!e.target.matches("[data-form=add]")) return;
+    e.preventDefault();
+    const input = e.target.elements.name;
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    state.players.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name.slice(0, 30), scores: Array(18).fill(null) });
+    save();
+    ui.focusAdd = true;
+    render();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!ui.editing || e.target.tagName === "INPUT") return;
+    if (/^[1-9]$/.test(e.key)) pressKey(e.key);
+    else if (e.key === "Backspace") pressKey("del");
+    else if (e.key === "Escape") { ui.editing = null; render(); }
+  });
+
+  render();
+
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
