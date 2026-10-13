@@ -1,6 +1,6 @@
 // Serves the app from cache so it still opens with no signal on the course,
 // and refreshes the cache in the background when a connection is available.
-const CACHE = "peoria-six-v1";
+const CACHE = "cafiero-cup-peoria-v2";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {

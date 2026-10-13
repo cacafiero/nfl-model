@@ -1,7 +1,7 @@
 {
-  "name": "Peoria Six",
-  "short_name": "Peoria",
-  "description": "Six-hole Peoria golf scoring and handicap calculator.",
+  "name": "Cafiero Cup Peoria Calculator",
+  "short_name": "Cafiero Cup",
+  "description": "Six-hole Peoria golf scoring and handicap calculator for the Cafiero Cup.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

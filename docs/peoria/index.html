@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Peoria">
+<meta name="apple-mobile-web-app-title" content="Cafiero Cup">
 <meta name="theme-color" content="#eef1ea" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1712" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Peoria Six</title>
+<title>Cafiero Cup Peoria Calculator</title>
 <style>
   :root {
     --bg: #eef1ea;
@@ -73,6 +73,9 @@
     border-bottom: 1px solid var(--line);
   }
   .brand { font-family: var(--font-num); font-weight: 800; font-size: 22px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 9px; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-text b { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .brand-text small { font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-soft); margin-top: 3px; }
   .flag { width: 14px; height: 20px; position: relative; display: inline-block; }
   .flag::before { content: ""; position: absolute; left: 1px; top: 0; width: 2px; height: 20px; background: var(--ink); border-radius: 1px; }
   .flag::after { content: ""; position: absolute; left: 3px; top: 1px; border-left: 11px solid var(--flag); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
@@ -201,7 +204,7 @@
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="flag"></span>Peoria Six</div>
+  <div class="brand"><span class="flag"></span><span class="brand-text"><b>Cafiero Cup</b><small>Peoria Calculator</small></span></div>
   <div class="sub" id="sub"></div>
 </header>
 <main id="view"></main>
@@ -538,11 +541,11 @@
   async function share() {
     const rows = leaderboard();
     const holes = state.six.map((i) => i + 1).join(", ");
-    const text = [`Peoria - six holes: ${holes}`]
+    const text = [`Cafiero Cup Peoria - six holes: ${holes}`]
       .concat(rows.map((r) => `${r.tied ? "T" : ""}${r.rank}. ${r.p.name}: net ${fmt(r.c.net)} (gross ${r.c.gross}, handicap ${fmt(r.c.hcp)})`))
       .join("\n");
     try {
-      if (navigator.share) { await navigator.share({ title: "Peoria results", text }); return; }
+      if (navigator.share) { await navigator.share({ title: "Cafiero Cup Peoria results", text }); return; }
     } catch (e) {
       if (e && e.name === "AbortError") return;
     }
