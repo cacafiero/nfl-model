@@ -42,6 +42,16 @@ def load_injuries(season: int, week: int) -> dict:
     return out
 
 
+def load_weather(season: int) -> dict:
+    """{game_id: forecast-or-indoor entry} from weather.py. Display only, and
+    optional: a missing file just means no weather line on the cards."""
+    path = os.path.join(common.DATA_DIR, f"weather_{season}.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        return json.load(f).get("games", {})
+
+
 def main():
     season = int(sys.argv[1]) if len(sys.argv) > 1 else common.current_season()
 
@@ -69,6 +79,7 @@ def main():
         "teams": teams,
         "games": predictions["games"],
         "injuries": injuries,
+        "weather": load_weather(season),
         "results": results,
     }
 

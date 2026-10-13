@@ -224,6 +224,20 @@
   .card .odds .pick .val.agree { color: var(--ink-soft); font-weight: 600; }
   .card .odds .pick .val.fade { color: var(--gold); }
 
+  .card .weather {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .card .weather .val { color: var(--ink); font-weight: 600; text-align: right; }
+  .card .weather .val.rough { color: var(--gold); font-weight: 700; }
+  .card .weather .val.indoor { color: var(--ink-soft); font-weight: 500; }
+
   .card .injuries {
     margin-top: 10px;
     padding-top: 10px;
@@ -457,6 +471,19 @@ function renderMatchups() {
         </div>`;
     }
 
+    let weatherHtml = "";
+    const wx = (SITE_DATA.weather || {})[g.game_id];
+    if (wx && wx.kind === "indoor") {
+      weatherHtml = `<div class="weather"><span>Weather</span><span class="val indoor">Indoors</span></div>`;
+    } else if (wx && wx.kind === "forecast") {
+      const parts = [`${wx.temp_f}&deg;F`];
+      if (wx.wind_mph !== null && wx.wind_mph !== undefined) parts.push(`wind ${wx.wind_mph} mph`);
+      if (wx.precip_pct !== null && wx.precip_pct !== undefined) parts.push(`${wx.precip_pct}% precip`);
+      const rough = wx.temp_f <= 32 || (wx.wind_mph || 0) >= 15 || (wx.precip_pct || 0) >= 50;
+      const roofNote = wx.roof_tbd ? " (roof TBD)" : "";
+      weatherHtml = `<div class="weather"><span>Weather</span><span class="val${rough ? " rough" : ""}">${parts.join(" &middot; ")}${roofNote}</span></div>`;
+    }
+
     const injuryRow = (abbr) => {
       const list = (SITE_DATA.injuries || {})[abbr];
       if (!list || !list.length) return "";
@@ -485,6 +512,7 @@ function renderMatchups() {
         </div>
         <div class="margin">Projected: <b>${leader}</b> by ${margin}</div>
         ${oddsHtml}
+        ${weatherHtml}
         ${injuriesHtml}
       </div>`;
   }).join("");
