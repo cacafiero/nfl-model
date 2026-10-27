@@ -53,6 +53,11 @@ RIDGE_ALPHA = 25.0  # L2 penalty; shrinks per-team coefficients so a small, nois
 # training window can't produce swings like -6 points per turnover that blow up
 # when evaluated against a different opponent's stat profile
 WINSORIZE_K = 2.0  # cap allowed-stats outliers beyond median +/- K * MAD
+# Raw model totals ran below actual scoring in both 2025 (replayed week by week
+# with backtest.py: +1.47) and 2026 (+2.48); pooled +1.75 over 376 games, split
+# evenly across the two teams. Level only: a margin bias was NOT corrected
+# because it flipped sign between seasons, and this does not add betting edge.
+TOTAL_LEVEL_ADJUST = 1.75
 
 
 def load_team_games(season: int) -> pl.DataFrame:
@@ -344,8 +349,10 @@ def main():
             x = np.concatenate([[1.0], opp_allowed, context])
             return float(beta @ x)
 
-        home_pts = project(home, away, team_is_home=True)
-        away_pts = project(away, home, team_is_home=False)
+        home_raw = project(home, away, team_is_home=True)
+        away_raw = project(away, home, team_is_home=False)
+        home_pts = None if home_raw is None else home_raw + TOTAL_LEVEL_ADJUST / 2
+        away_pts = None if away_raw is None else away_raw + TOTAL_LEVEL_ADJUST / 2
         spread_line = game.get("spread_line")  # home-favored margin per the market (positive = home favored)
         total_line = game.get("total_line")
 
@@ -366,6 +373,8 @@ def main():
             "away_team": away,
             "home_projected": home_pts,
             "away_projected": away_pts,
+            "home_projected_raw": home_raw,
+            "away_projected_raw": away_raw,
             "home_r_squared": models.get(home, {}).get("r_squared"),
             "away_r_squared": models.get(away, {}).get("r_squared"),
             "home_rmse": models.get(home, {}).get("rmse"),
