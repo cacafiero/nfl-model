@@ -344,7 +344,7 @@
 
   <section id="matchups-section">
     <h2 class="section-title">This Week's Projections</h2>
-    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line. Edge is how many points the model sits from the line; it is a size of disagreement, not a confidence score.</p>
+    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line. Edge is how many points the model sits from the line; it is a size of disagreement, not a confidence score. Market win chance comes from the moneyline with the bookmaker's margin removed, so it is the market's estimate, not the model's.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
   </section>
 
@@ -447,10 +447,18 @@ function renderMatchups() {
       const totalEdge = g.model_total == null || g.total_line == null ? null : Math.abs(g.model_total - g.total_line);
       const edgeHtml = spreadEdge == null ? "" : `
           <div class="line"><span>Edge vs line</span><span class="val">${spreadEdge.toFixed(1)} spread${totalEdge == null ? "" : ` &middot; ${totalEdge.toFixed(1)} total`}</span></div>`;
+      const impliedProb = (ml) => (ml > 0 ? 100 / (ml + 100) : Math.abs(ml) / (Math.abs(ml) + 100));
+      let winHtml = "";
+      if (g.home_moneyline != null && g.away_moneyline != null) {
+        const ph = impliedProb(g.home_moneyline), pa = impliedProb(g.away_moneyline);
+        const awayPct = Math.round((100 * pa) / (ph + pa));
+        winHtml = `
+          <div class="line"><span>Market win chance</span><span class="val">${g.away_team} ${awayPct}% &middot; ${g.home_team} ${100 - awayPct}%</span></div>`;
+      }
       oddsHtml = `
         <div class="odds">
           <div class="line"><span>Line</span><span class="val">${favTeam} -${favAmt} &middot; O/U ${fmtScore(g.total_line)}</span></div>
-          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>${edgeHtml}
+          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>${edgeHtml}${winHtml}
         </div>`;
     }
 
