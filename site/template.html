@@ -238,27 +238,6 @@
   .card .weather .val.rough { color: var(--gold); font-weight: 700; }
   .card .weather .val.indoor { color: var(--ink-soft); font-weight: 500; }
 
-  .card .injuries {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--line);
-    font-size: 11.5px;
-    color: var(--ink-soft);
-  }
-  .card .injuries .inj-row { margin-top: 3px; }
-  .card .injuries .inj-row:first-child { margin-top: 0; }
-  .card .injuries b { color: var(--ink); }
-  .card .injuries .status {
-    display: inline-block;
-    font-weight: 700;
-    padding: 0 4px;
-    border-radius: 3px;
-    font-size: 10.5px;
-  }
-  .card .injuries .status.Out { background: color-mix(in srgb, var(--bad) 24%, transparent); color: var(--bad); }
-  .card .injuries .status.Doubtful { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
-  .card .injuries .status.Questionable { background: color-mix(in srgb, var(--ink-soft) 14%, transparent); color: var(--ink-soft); }
-
   /* --- Rankings table --- */
   .table-scroll { overflow-x: auto; }
   table.rankings {
@@ -365,7 +344,7 @@
 
   <section id="matchups-section">
     <h2 class="section-title">This Week's Projections</h2>
-    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line.</p>
+    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line. Edge is how many points the model sits from the line; it is a size of disagreement, not a confidence score.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
   </section>
 
@@ -464,10 +443,14 @@ function renderMatchups() {
       const favAmt = Math.abs(g.spread_line).toFixed(1);
       const spreadPickAgrees = g.pick_spread === favTeam;
       const totalPickLabel = g.pick_total === "OVER" ? `OVER ${fmtScore(g.total_line)}` : `UNDER ${fmtScore(g.total_line)}`;
+      const spreadEdge = g.model_margin == null ? null : Math.abs(g.model_margin - g.spread_line);
+      const totalEdge = g.model_total == null || g.total_line == null ? null : Math.abs(g.model_total - g.total_line);
+      const edgeHtml = spreadEdge == null ? "" : `
+          <div class="line"><span>Edge vs line</span><span class="val">${spreadEdge.toFixed(1)} spread${totalEdge == null ? "" : ` &middot; ${totalEdge.toFixed(1)} total`}</span></div>`;
       oddsHtml = `
         <div class="odds">
           <div class="line"><span>Line</span><span class="val">${favTeam} -${favAmt} &middot; O/U ${fmtScore(g.total_line)}</span></div>
-          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>
+          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>${edgeHtml}
         </div>`;
     }
 
@@ -483,15 +466,6 @@ function renderMatchups() {
       const roofNote = wx.roof_tbd ? " (roof TBD)" : "";
       weatherHtml = `<div class="weather"><span>Weather</span><span class="val${rough ? " rough" : ""}">${parts.join(" &middot; ")}${roofNote}</span></div>`;
     }
-
-    const injuryRow = (abbr) => {
-      const list = (SITE_DATA.injuries || {})[abbr];
-      if (!list || !list.length) return "";
-      const names = list.map(p => `${p.name} (${p.position}) <span class="status ${p.status}">${p.status[0]}</span>`).join(", ");
-      return `<div class="inj-row"><b>${abbr}</b>: ${names}</div>`;
-    };
-    const injuriesInner = injuryRow(g.away_team) + injuryRow(g.home_team);
-    const injuriesHtml = injuriesInner ? `<div class="injuries">${injuriesInner}</div>` : "";
 
     return `
       <div class="card">
@@ -513,7 +487,6 @@ function renderMatchups() {
         <div class="margin">Projected: <b>${leader}</b> by ${margin}</div>
         ${oddsHtml}
         ${weatherHtml}
-        ${injuriesHtml}
       </div>`;
   }).join("");
 }
