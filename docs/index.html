@@ -223,6 +223,9 @@
   }
   .card .odds .pick .val.agree { color: var(--ink-soft); font-weight: 600; }
   .card .odds .pick .val.fade { color: var(--gold); }
+  .card .odds .line .val.fit-strong { color: var(--good); }
+  .card .odds .line .val.fit-weak { color: var(--bad); }
+  .card .odds .line .val.fit-average { color: var(--ink-soft); }
 
   .card .weather {
     margin-top: 10px;
@@ -344,7 +347,7 @@
 
   <section id="matchups-section">
     <h2 class="section-title">This Week's Projections</h2>
-    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line. Edge is how many points the model sits from the line; it is a size of disagreement, not a confidence score. Market win chance comes from the moneyline with the bookmaker's margin removed, so it is the market's estimate, not the model's.</p>
+    <p class="section-sub">Each team's own regression, evaluated against what its opponent has allowed this season &mdash; compared against the market line. Edge is how many points the model sits from the line; it is a size of disagreement, not a confidence score. Market win chance comes from the moneyline with the bookmaker's margin removed, so it is the market's estimate, not the model's. Spread confidence rates how well the two teams' regressions fit their own games: Strong means both teams average R² 0.67 or higher and a ± under 5.8, Weak means both are worse than that, and Average is anything in between. Total confidence is Weak when the model's total is 8 or more points from the posted total; those over/under picks have mostly lost this season. Both ratings come from this season's graded games.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
   </section>
 
@@ -412,6 +415,30 @@ function fmtFit(r2, rmse) {
   return `${fmtR2(r2)}${rmseText}`;
 }
 
+// Thresholds come from grading Weeks 1-9 of 2026. Spread: games where both
+// teams' average R² >= 0.67 and average ± < 5.8 went 24-7 ATS; games with
+// both the other way went 11-20 (R² and ± didn't separate O/U results).
+// Total: when |model_total - total_line| >= 8 the O/U pick went 11-24,
+// against 62-36 below that.
+const FIT_STRONG_R2 = 0.67;
+const FIT_WIDE_RMSE = 5.8;
+const TOTAL_WIDE_EDGE = 8;
+
+function totalRating(g) {
+  if (g.model_total == null || g.total_line == null) return null;
+  return Math.abs(g.model_total - g.total_line) >= TOTAL_WIDE_EDGE ? "Weak" : "Average";
+}
+
+function fitRating(g) {
+  const vals = [g.home_r_squared, g.away_r_squared, g.home_rmse, g.away_rmse];
+  if (vals.some(v => v === null || v === undefined)) return null;
+  const r2 = (g.home_r_squared + g.away_r_squared) / 2;
+  const rmse = (g.home_rmse + g.away_rmse) / 2;
+  if (r2 >= FIT_STRONG_R2 && rmse < FIT_WIDE_RMSE) return "Strong";
+  if (r2 < FIT_STRONG_R2 && rmse >= FIT_WIDE_RMSE) return "Weak";
+  return "Average";
+}
+
 function rankBadge(rank) {
   const cls = rank <= 10 ? "good" : rank <= 22 ? "mid" : "bad";
   return `<span class="badge ${cls}">${rank}</span>`;
@@ -455,10 +482,16 @@ function renderMatchups() {
         winHtml = `
           <div class="line"><span>Market win chance</span><span class="val">${g.away_team} ${awayPct}% &middot; ${g.home_team} ${100 - awayPct}%</span></div>`;
       }
+      const fit = fitRating(g);
+      const totalFit = totalRating(g);
+      const fitHtml = (fit == null ? "" : `
+          <div class="line"><span>Spread confidence</span><span class="val fit-${fit.toLowerCase()}">${fit}</span></div>`)
+        + (totalFit == null ? "" : `
+          <div class="line"><span>Total confidence</span><span class="val fit-${totalFit.toLowerCase()}">${totalFit}</span></div>`);
       oddsHtml = `
         <div class="odds">
           <div class="line"><span>Line</span><span class="val">${favTeam} -${favAmt} &middot; O/U ${fmtScore(g.total_line)}</span></div>
-          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>${edgeHtml}${winHtml}
+          <div class="pick"><span>Model likes</span><span class="val ${spreadPickAgrees ? "agree" : "fade"}">${g.pick_spread} ATS &middot; ${totalPickLabel}</span></div>${fitHtml}${edgeHtml}${winHtml}
         </div>`;
     }
 
