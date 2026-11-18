@@ -602,6 +602,10 @@ const CSV_COLUMNS = [
   ["total_line", "Total Line"],
   ["pick_spread", "Pick ATS"],
   ["pick_total", "Pick O/U"],
+  [g => fitRating(g), "Spread Confidence"],
+  [g => totalRating(g), "Total Confidence"],
+  [g => (g.model_margin == null || g.spread_line == null) ? null : Math.abs(g.model_margin - g.spread_line), "Spread Edge"],
+  [g => (g.model_total == null || g.total_line == null) ? null : Math.abs(g.model_total - g.total_line), "Total Edge"],
 ];
 
 function csvCell(value, decimals = 1) {
@@ -617,7 +621,7 @@ async function downloadCSV() {
   const rows = games.filter(g => g.week === week);
   const lines = [
     CSV_COLUMNS.map(([, label]) => csvCell(label)).join(","),
-    ...rows.map(g => CSV_COLUMNS.map(([key, , decimals]) => csvCell(g[key], decimals)).join(",")),
+    ...rows.map(g => CSV_COLUMNS.map(([key, , decimals]) => csvCell(typeof key === "function" ? key(g) : g[key], decimals)).join(",")),
   ];
   const csvText = lines.join("\r\n");
   const filename = `fourth-and-model-week-${week}-${SITE_DATA.season}.csv`;
