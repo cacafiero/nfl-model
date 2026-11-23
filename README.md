@@ -23,9 +23,15 @@ Claude Artifact.
 
 - Rankings: per-team average-drive stats (scoring %, turnover %, yards/drive)
   from play-by-play, ranked 1–32.
-- Predictions: a ridge-regularized regression per team of points scored on
-  that game's box score inputs (pass/rush attempts and yards, turnovers),
-  evaluated against the upcoming opponent's season-to-date average allowed
-  inputs. Early in a season (before a team has played a handful of games) it
-  falls back to the most recently completed season's full game log.
-- No betting lines/odds yet — projections only.
+- Predictions (since 2026-11-23): every offense and defense is rated jointly,
+  adjusted for opponents, from EPA per play and points scored (weighted
+  ridge regression; recent games count more, last season counts less, and
+  teams with little data are pulled toward average). Projected points =
+  league average + home edge + offense rating + opponent's defense rating.
+  See the docstring in `scripts/predict.py` for the backtest numbers.
+- Tuning: `python scripts/tune.py tune` grid-searches the settings on 2025;
+  `python scripts/tune.py compare` replays 2025 and 2026 against the closing
+  lines. `scripts/backtest.py` still replays the full `predict.py` pipeline.
+- Before 2026-11-23, predictions came from a per-team regression of points on
+  box-score inputs (see git history of `scripts/predict.py`).
+- Projections are compared to the market's closing spread and total.
