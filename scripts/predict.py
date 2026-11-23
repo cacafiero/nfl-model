@@ -35,6 +35,7 @@ and -0.34 (2026) points from actual.
 Usage: python predict.py [season]  -> data/predictions_<season>.json
 """
 import json
+import math
 import os
 import sys
 
@@ -47,6 +48,15 @@ OFFSEASON_GAP = 8.0   # extra weeks of decay applied to last season's games
 LAMBDA_EPA = 2.0      # ridge penalty (in weighted-game units) for EPA ratings
 LAMBDA_PTS = 4.0      # ridge penalty for points ratings (points are noisier)
 W_EPA = 0.5           # share of the projection that comes from EPA ratings
+# Spread of actual margins around the model's margin (2025 replay: 13.0 pts).
+# Turns a projected margin into a win chance: P(home wins) = Phi(margin / SD).
+# Checked on 2026 games it wasn't fit on: 55-65% picks won 62%, 65-75% won
+# 80%, 75%+ won 83%; Brier 0.218 vs 0.250 for a coin flip.
+MARGIN_SD = 13.0
+
+
+def home_win_prob(margin: float) -> float:
+    return 0.5 * (1.0 + math.erf(margin / (MARGIN_SD * math.sqrt(2.0))))
 
 
 def load_rows(seasons) -> pl.DataFrame:
@@ -174,6 +184,7 @@ def main():
                 "model_margin": h - a, "model_total": h + a,
                 "pick_spread": None if spread_line is None else (g["home_team"] if h - a > spread_line else g["away_team"]),
                 "pick_total": None if total_line is None else ("OVER" if h + a > total_line else "UNDER"),
+                "home_win_prob": home_win_prob(h - a),
                 "model": "epa",
             })
     out.sort(key=lambda p: (p["week"], p["gameday"] or ""))
