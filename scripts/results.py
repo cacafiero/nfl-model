@@ -145,6 +145,8 @@ def grade_game(pred: dict, actual_row: dict):
         "ats_result": ats_result,
         "total_result": total_result,
         "straight_up_result": straight_up_result,
+        # Flag recorded in the pre-game snapshot (EPA model, 2026 Week 12 on).
+        "under_watch": bool(pred.get("under_watch")),
         "margin_abs_error": abs(model_margin - actual_margin) if model_margin is not None else None,
         "total_abs_error": abs(model_total - actual_total) if model_total is not None else None,
     }
@@ -174,6 +176,7 @@ def summarize(games: list):
         "ats": record(games, "ats_result"),
         "total": record(games, "total_result"),
         "straight_up": record(games, "straight_up_result"),
+        "under_watch": record([g for g in games if g.get("under_watch")], "total_result"),
         "avg_margin_abs_error": round(sum(margin_errors) / len(margin_errors), 2) if margin_errors else None,
         "avg_total_abs_error": round(sum(total_errors) / len(total_errors), 2) if total_errors else None,
         "by_week": [

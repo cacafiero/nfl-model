@@ -345,7 +345,7 @@
 
   <section id="results-section" hidden>
     <h2 class="section-title">Track Record</h2>
-    <p class="section-sub">Graded against final scores, using the last prediction on the books before kickoff each week. Picks made before November 23, 2026 come from the original per-team regression model; the current model took over starting with that night's game.</p>
+    <p class="section-sub">Graded against final scores, using the last prediction on the books before kickoff each week. Picks made before November 23, 2026 come from the original per-team regression model; the current model took over starting with that night's game. Under Watch tracks one pattern from past seasons: games where the model's total is 2&ndash;4 points below the posted total. Those under picks went 57% across 2021&ndash;2026, but the pattern was found by sifting past results, so it is being tested on new games from Week 12 before it counts as anything.</p>
     <div class="stat-tiles" id="stat-tiles"></div>
     <div class="table-scroll">
       <table class="rankings" id="results-table">
@@ -431,7 +431,7 @@ function renderMatchups() {
       const totalPickLabel = g.pick_total === "OVER" ? `OVER ${fmtScore(g.total_line)}` : `UNDER ${fmtScore(g.total_line)}`;
       const spreadEdge = g.model_margin == null ? null : Math.abs(g.model_margin - g.spread_line);
       const totalEdge = g.model_total == null || g.total_line == null ? null : Math.abs(g.model_total - g.total_line);
-      const edgeHtml = spreadEdge == null ? "" : `
+      let edgeHtml = spreadEdge == null ? "" : `
           <div class="line"><span>Edge vs line</span><span class="val">${spreadEdge.toFixed(1)} spread${totalEdge == null ? "" : ` &middot; ${totalEdge.toFixed(1)} total`}</span></div>`;
       const impliedProb = (ml) => (ml > 0 ? 100 / (ml + 100) : Math.abs(ml) / (Math.abs(ml) + 100));
       let winHtml = "";
@@ -445,6 +445,10 @@ function renderMatchups() {
         const modelAway = Math.round(100 * (1 - g.home_win_prob));
         winHtml = `
           <div class="line"><span>Model win chance</span><span class="val">${g.away_team} ${modelAway}% &middot; ${g.home_team} ${100 - modelAway}%</span></div>` + winHtml;
+      }
+      if (g.under_watch) {
+        edgeHtml += `
+          <div class="line"><span>Under watch</span><span class="val">Model 2&ndash;4 pts under the total (tracking)</span></div>`;
       }
       oddsHtml = `
         <div class="odds">
@@ -515,6 +519,7 @@ function renderResults() {
     { label: "Against the Spread", value: fmtRecord(summary.ats) },
     { label: "Over/Under", value: fmtRecord(summary.total) },
     { label: "Straight Up", value: fmtRecord(summary.straight_up) },
+    { label: "Under Watch", value: summary.under_watch && (summary.under_watch.wins + summary.under_watch.losses + summary.under_watch.pushes) ? fmtRecord(summary.under_watch) : "0-0 (tracking)" },
     { label: "Avg Score Error", value: `${fmtScore(summary.avg_margin_abs_error)} margin / ${fmtScore(summary.avg_total_abs_error)} total` },
   ];
   document.getElementById("stat-tiles").innerHTML = tiles.map(t => `
@@ -554,6 +559,7 @@ const CSV_COLUMNS = [
   ["total_line", "Total Line"],
   ["pick_spread", "Pick ATS"],
   ["pick_total", "Pick O/U"],
+  [g => g.under_watch ? "Yes" : "", "Under Watch"],
   [g => g.home_win_prob == null ? null : 100 * (1 - g.home_win_prob), "Away Model Win %"],
   [g => g.home_win_prob == null ? null : 100 * g.home_win_prob, "Home Model Win %"],
   [g => (g.model_margin == null || g.spread_line == null) ? null : Math.abs(g.model_margin - g.spread_line), "Spread Edge"],

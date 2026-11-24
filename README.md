@@ -32,6 +32,11 @@ Claude Artifact.
 - Tuning: `python scripts/tune.py tune` grid-searches the settings on 2025;
   `python scripts/tune.py compare` replays 2025 and 2026 against the closing
   lines. `scripts/backtest.py` still replays the full `predict.py` pipeline.
+- Multi-season check: `python scripts/season_report.py` replays 2021-2026
+  (needs 2020-2026 data fetched) and reports ATS / O/U records by edge size
+  and win-% calibration. As of Week 12 of 2026: picks winners 60-65% every
+  season, but spread and total picks land around 50%. It is a score
+  predictor, not a betting edge.
 - Before 2026-11-23, predictions came from a per-team regression of points on
   box-score inputs (see git history of `scripts/predict.py`).
 - Projections are compared to the market's closing spread and total.

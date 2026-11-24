@@ -53,6 +53,11 @@ W_EPA = 0.5           # share of the projection that comes from EPA ratings
 # Checked on 2026 games it wasn't fit on: 55-65% picks won 62%, 65-75% won
 # 80%, 75%+ won 83%; Brier 0.218 vs 0.250 for a coin flip.
 MARGIN_SD = 13.0
+# "Under watch": games where the model's total is 2-4 points BELOW the posted
+# total. Replaying 2021-2026 these UNDER picks went 102-77 (57%), but the
+# pattern was found by slicing results many ways, so it is tracked live from
+# 2026 Week 12 on (results.py) before anyone treats it as an edge.
+UNDER_WATCH_MIN, UNDER_WATCH_MAX = 2.0, 4.0
 
 
 def home_win_prob(margin: float) -> float:
@@ -185,6 +190,8 @@ def main():
                 "pick_spread": None if spread_line is None else (g["home_team"] if h - a > spread_line else g["away_team"]),
                 "pick_total": None if total_line is None else ("OVER" if h + a > total_line else "UNDER"),
                 "home_win_prob": home_win_prob(h - a),
+                "under_watch": bool(total_line is not None
+                                    and UNDER_WATCH_MIN <= total_line - (h + a) < UNDER_WATCH_MAX),
                 "model": "epa",
             })
     out.sort(key=lambda p: (p["week"], p["gameday"] or ""))
