@@ -58,6 +58,13 @@ MARGIN_SD = 13.0
 # pattern was found by slicing results many ways, so it is tracked live from
 # 2026 Week 12 on (results.py) before anyone treats it as an edge.
 UNDER_WATCH_MIN, UNDER_WATCH_MAX = 2.0, 4.0
+# "Model vs market" caution: a team score this many points away from the
+# market's implied team total (home = (total + spread) / 2). Replaying
+# 2021-2026, when the gap was 3+ points the actual score moved toward the
+# model's number only 226 times vs 241 toward the market's, and the model's
+# miss grew (8.1 vs 7.3 pts). So it is a warning to check injury and lineup
+# news, not a pick.
+MARKET_GAP_FLAG = 4.0
 
 
 def home_win_prob(margin: float) -> float:
@@ -180,6 +187,10 @@ def main():
             seen.update((g["home_team"], g["away_team"]))
             h, a = model.project(g)
             spread_line, total_line = g.get("spread_line"), g.get("total_line")
+            home_implied = away_implied = None
+            if spread_line is not None and total_line is not None:
+                home_implied = (total_line + spread_line) / 2
+                away_implied = total_line - home_implied
             out.append({
                 "game_id": g["game_id"], "week": g["week"], "gameday": g.get("gameday"),
                 "home_team": g["home_team"], "away_team": g["away_team"],
@@ -192,6 +203,10 @@ def main():
                 "home_win_prob": home_win_prob(h - a),
                 "under_watch": bool(total_line is not None
                                     and UNDER_WATCH_MIN <= total_line - (h + a) < UNDER_WATCH_MAX),
+                "home_implied": home_implied, "away_implied": away_implied,
+                "market_gap_teams": [] if home_implied is None else
+                    [t for t, proj, imp in ((g["away_team"], a, away_implied), (g["home_team"], h, home_implied))
+                     if abs(proj - imp) >= MARKET_GAP_FLAG],
                 "model": "epa",
             })
     out.sort(key=lambda p: (p["week"], p["gameday"] or ""))

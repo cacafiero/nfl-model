@@ -209,6 +209,8 @@
     color: var(--ink-soft);
   }
   .card .odds .line .val { color: var(--ink); font-weight: 600; }
+  .card .odds .line.caution, .card .odds .line.caution .val { color: #b45309; }
+  @media (prefers-color-scheme: dark) { .card .odds .line.caution, .card .odds .line.caution .val { color: #fbbf24; } }
   .card .odds .pick {
     display: flex;
     justify-content: space-between;
@@ -339,7 +341,7 @@
 
   <section id="matchups-section">
     <h2 class="section-title">This Week's Projections</h2>
-    <p class="section-sub">Every offense and defense is rated against the opponents it has faced, from EPA per play and points scored, with recent games counting more. A team's projection is its offense rating plus its opponent's defense rating, plus home field. Edge is how many points the model sits from the line. It measures disagreement, not confidence: replaying 2025 and 2026, bigger edges did not win more often. Model win chance turns the projected margin into a probability; replaying 2026 games, teams it gave 55&ndash;65% won 62% of the time and teams it gave 65%+ won 81%. Market win chance comes from the moneyline with the bookmaker's margin removed, so it is the market's estimate, not the model's.</p>
+    <p class="section-sub">Every offense and defense is rated against the opponents it has faced, from EPA per play and points scored, with recent games counting more. A team's projection is its offense rating plus its opponent's defense rating, plus home field. Edge is how many points the model sits from the line. It measures disagreement, not confidence: replaying 2025 and 2026, bigger edges did not win more often. Model win chance turns the projected margin into a probability; replaying 2026 games, teams it gave 55&ndash;65% won 62% of the time and teams it gave 65%+ won 81%. Market win chance comes from the moneyline with the bookmaker's margin removed, so it is the market's estimate, not the model's. &#9888; Model vs market marks a team score 4+ points from the market's implied team total (from the spread and total). In 2021&ndash;2026 replays the market was usually closer in those games, so treat it as a reason to check injury and lineup news, not as a pick.</p>
     <div class="matchup-grid" id="matchup-grid"></div>
   </section>
 
@@ -446,6 +448,15 @@ function renderMatchups() {
         winHtml = `
           <div class="line"><span>Model win chance</span><span class="val">${g.away_team} ${modelAway}% &middot; ${g.home_team} ${100 - modelAway}%</span></div>` + winHtml;
       }
+      (g.market_gap_teams || []).forEach(t => {
+        const isHome = t === g.home_team;
+        const proj = isHome ? g.home_projected : g.away_projected;
+        const imp = isHome ? g.home_implied : g.away_implied;
+        if (proj == null || imp == null) return;
+        const diff = proj - imp;
+        edgeHtml += `
+          <div class="line caution"><span>&#9888; Model vs market</span><span class="val">${t} ${fmtScore(proj)} vs ${fmtScore(imp)} (${diff > 0 ? "+" : ""}${diff.toFixed(1)}), check news</span></div>`;
+      });
       if (g.under_watch) {
         edgeHtml += `
           <div class="line"><span>Under watch</span><span class="val">Model 2&ndash;4 pts under the total (tracking)</span></div>`;
@@ -560,6 +571,9 @@ const CSV_COLUMNS = [
   ["pick_spread", "Pick ATS"],
   ["pick_total", "Pick O/U"],
   [g => g.under_watch ? "Yes" : "", "Under Watch"],
+  [g => g.away_implied, "Away Market Team Total"],
+  [g => g.home_implied, "Home Market Team Total"],
+  [g => (g.market_gap_teams || []).join(" "), "Model vs Market Caution"],
   [g => g.home_win_prob == null ? null : 100 * (1 - g.home_win_prob), "Away Model Win %"],
   [g => g.home_win_prob == null ? null : 100 * g.home_win_prob, "Home Model Win %"],
   [g => (g.model_margin == null || g.spread_line == null) ? null : Math.abs(g.model_margin - g.spread_line), "Spread Edge"],
